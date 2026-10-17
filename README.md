@@ -6,13 +6,13 @@
 
 [打开共享网页](https://super-duper-robot-jrqrj964x76qh5rxq-5173.app.github.dev/)
 
-页面运行在共享 Codespace，5173 端口已按项目负责人确认设为公开；Codespace 停止或休眠时链接暂不可用。当前可预览界面、查询中免商品和使用地图，云端识图尚未启用。本机密钥和电商登录会话不会随代码上传。
+页面运行在共享 Codespace，5173 端口已按项目负责人确认设为公开；Codespace 停止或休眠时链接暂不可用。支持查询中免商品、地图和所有访客直接上传识图；云端识图需要配置服务端 Codespaces secret。手机和电脑均可点击顶部「返回首页」清除搜索和图片，恢复首页商品。
 
 ## 启动
 
 运行 `npm start` 或双击 `start.cmd`，打开 http://127.0.0.1:5173/ 。仅本机访问可先设 `$env:HOST='127.0.0.1'`，默认 HOST 为 0.0.0.0。
 
-智谱密钥存于本机 `.env` 的 `ZHIPU_API_KEY=`，参考 `.env.example`，禁止提交/分享。密钥仅由后端读取，视觉接口仅本机可用，服务器不保存原图。
+智谱密钥存于本机 `.env` 的 `ZHIPU_API_KEY=`，参考 `.env.example`，禁止提交/分享。云端使用同名 Codespaces development secret，密钥仅由后端读取，服务器不保存原图。本机模式只接受本机请求；Codespaces 模式额外接受当前预览域名的同源请求。
 
 ## 搜索与报价
 
@@ -47,6 +47,6 @@
 
 `npm test` 覆盖归一化搜索、相关性、同款规格、价格解析/排序/时效、并发合并、官方数据和汇率、地图、视觉校验与本机密钥边界。注入响应测试与现场取价验证分开记录。
 
-接口：`GET /api/products/home`、`/api/products/search?q=关键词&page=1`、`/api/products/match?item=识别JSON`、`/api/products/compare?id=p商品编号`、`/api/products/detail?id=p商品编号`、`/api/rates`、`/api/catalogue`。搜索/匹配/比价支持 `fresh=1`；`POST /api/vision/recognise` 提供本机识图。
+接口：`GET /api/products/home`、`/api/products/search?q=关键词&page=1`、`/api/products/match?item=识别JSON`、`/api/products/compare?id=p商品编号`、`/api/products/detail?id=p商品编号`、`/api/rates`、`/api/catalogue`。搜索/匹配/比价支持 `fresh=1`；`POST /api/vision/recognise` 提供识图，`GET /api/vision/status` 仅返回配置状态与模型名。
 
 未更新既有 WorkBuddy 线上版本。本地服务已重新运行；具体网页验证与未解决来源限制见 `logs/2026-10-16.md`，不把注入数据测试当成平台真实取价成功。

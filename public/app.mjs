@@ -185,7 +185,11 @@ $('#remove-image').addEventListener('click', clearImage);
 $('#query-form').addEventListener('dragover', (event) => event.preventDefault());
 $('#query-form').addEventListener('drop', (event) => { event.preventDefault(); uploadImage(event.dataTransfer.files[0]); });
 $('#refresh').addEventListener('click', () => loadProducts(state.query, state.page, true, state.imageFile ? state.identification : null));
-$('#home').addEventListener('click', () => { clearImage(); $('#query').value = ''; loadProducts(); });
+$('#home').addEventListener('click', () => {
+  clearImage(); $('#query').value = ''; $('#query-error').hidden = true;
+  $('#comparison-dialog').close(); state.selectedId = null;
+  loadProducts(); window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 $('#open-stores').addEventListener('click', () => $('#store-panel').scrollIntoView({ block: 'start', behavior: 'smooth' }));
 $('#language').addEventListener('click', () => { state.lang = state.lang === 'zh' ? 'en' : 'zh'; translate(); });
 $('#close-comparison').addEventListener('click', () => $('#comparison-dialog').close());

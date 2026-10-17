@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { readVisionKey, recogniseProduct, visionModel, VisionError } from './vision.mjs';
+import { codespaceVisionOrigin, canUseVision } from './vision-access.mjs';
 import { createRateService } from './rates.mjs';
 import { createCatalogueService, createProductSearch } from './catalogue.mjs';
 import { validateIdentification } from './matching.mjs';
@@ -11,6 +12,7 @@ import { createCommerceService } from './commerce.mjs';
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || '0.0.0.0';
+const visionOrigin = codespaceVisionOrigin(process.env, port);
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
 let visionBusy = false;
 const visionRequests = [];
@@ -22,13 +24,8 @@ function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.end(JSON.stringify(body));
 }
-function isLocalRequest(req) {
-  const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
-  const validHost = /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(req.headers.host || '');
-  return local && validHost && (!req.headers.origin || req.headers.origin === `http://${req.headers.host}`);
-}
 async function visionRoute(req, res) {
-  if (!isLocalRequest(req)) { json(res, 403, { error: 'LOCAL_ONLY' }); return; }
+  if (!canUseVision(req, visionOrigin)) { json(res, 403, { error: 'VISION_ORIGIN_DENIED' }); return; }
   if (req.url === '/api/vision/status' && req.method === 'GET') {
     json(res, 200, { configured: Boolean(await readVisionKey()), model: visionModel }); return;
   }

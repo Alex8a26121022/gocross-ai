@@ -25,8 +25,15 @@ HOST=0.0.0.0 PORT=5173 DISABLED_MARKET_PLATFORMS=taobao,tmall npm start
 ## 凭据与功能边界
 
 - `.env`、浏览器登录会话和 Cookie 不放入代码仓库或代码压缩包，密钥不会因为上传源码自动进入 Codespace。
-- 当前视觉接口有本机来源限制。云端网页可查看界面、搜索中免商品和使用地图，但不能将它描述为已完成云端识图；启用云端识图需要另行设计认证、用量限制与服务端密钥管理。
+- 项目负责人已确认所有访客都可直接识图。将 `ZHIPU_API_KEY` 配置为仓库的 Codespaces development secret 后停止并重新启动 Codespace，服务端从环境变量读取，不写进前端、Git 或页面。只返回是否已配置及模型名，图片不落盘。
+- 通过 GitHub 注入的 `CODESPACES`、`CODESPACE_NAME`、`GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN` 自动确定当前 5173 HTTPS 预览来源，浏览器上传必须来自该来源。本机原有来源保护保留。公开接口没有用户登录；同源校验不等于身份认证，保留全服务一次一个识图任务、每分钟最多 10 次请求和 8 MB 图片上限，以免并发耗尽免费配额。
 - 国内平台取价仍受现有登录及工具访问限制；本配置保留淘宝/天猫自动采集禁用状态，不附带电商账号。
 - 新机器上的汇率、官网商品由其后端独立获取；失败时不会用你电脑缓存或样例价补位。
 
 官方说明：[Codespaces 端口转发与共享](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace)、[开发容器配置](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)。
+
+## 休眠与在线时间
+
+GitHub Settings → Codespaces → Default idle timeout 可设置 5–240 分钟，默认设置用于新建 Codespace，组织策略可能更短。即使继续活跃，Codespace 也有最长 12 小时运行周期；没有永久不休眠的选项。停止或休眠期间预览和采集任务都不可用，重新启动后恢复。持续给公众提供服务需另外部署常驻服务器，当前没有开通收费托管。
+
+官方说明：[闲置超时设置](https://docs.github.com/en/codespaces/setting-your-user-preferences/setting-your-timeout-period-for-github-codespaces)、[持久化环境变量与密钥](https://docs.github.com/en/codespaces/developing-in-a-codespace/persisting-environment-variables-and-temporary-files)。
