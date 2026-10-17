@@ -13,6 +13,7 @@ export function canUseVision(req, publicOrigin) {
   if (local && localHost && (!origin || origin === `http://${host}`)) return true;
   if (!publicOrigin) return false;
   // Origin checks prevent cross-site browser use; this public endpoint is not authenticated.
-  if (origin) return origin === publicOrigin && (host === new URL(publicOrigin).host || (local && localHost));
-  return req.method === 'GET' && req.url === '/api/vision/status' && host === new URL(publicOrigin).host;
+  // Codespaces can rewrite Host to an internal address; compare the browser's exact Origin.
+  if (origin) return origin === publicOrigin;
+  return req.method === 'GET' && req.url === '/api/vision/status';
 }

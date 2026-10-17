@@ -17,7 +17,7 @@ test('云端允许本站上传和状态查询，拒绝其他网站、相似域�
   assert.equal(canUseVision(request({ host, origin }), origin), true);
   assert.equal(canUseVision(request({ host }, { method: 'GET', url: '/api/vision/status' }), origin), true);
   for (const badOrigin of [undefined, 'null', 'https://evil.example', origin + '.evil.example', origin + '/']) assert.equal(canUseVision(request({ host, origin: badOrigin }), origin), false);
-  assert.equal(canUseVision(request({ host: 'evil.example', origin }), origin), false);
+  assert.equal(canUseVision(request({ host: 'internal-proxy:5173', origin }), origin), true);
   assert.equal(canUseVision(request({ host, origin }), ''), false);
 });
 
