@@ -6,13 +6,13 @@
 
 [打开共享网页](https://super-duper-robot-jrqrj964x76qh5rxq-5173.app.github.dev/)
 
-页面运行在共享 Codespace，5173 端口已按项目负责人确认设为公开；Codespace 停止或休眠时链接暂不可用。支持查询中免商品、地图和所有访客直接上传识图；云端识图需要配置服务端 Codespaces secret。手机和电脑均可点击顶部「返回首页」清除搜索和图片，恢复首页商品。
+页面运行在共享 Codespace，5173 端口已按项目负责人确认设为公开；Codespace 停止或休眠时链接暂不可用。云端识图已启用，所有访客均可直接上传图片，也可查询中免商品和使用地图。手机和电脑均可点击顶部「返回首页」清除搜索和图片，恢复首页商品。
 
 ## 启动
 
 运行 `npm start` 或双击 `start.cmd`，打开 http://127.0.0.1:5173/ 。仅本机访问可先设 `$env:HOST='127.0.0.1'`，默认 HOST 为 0.0.0.0。
 
-智谱密钥存于本机 `.env` 的 `ZHIPU_API_KEY=`，参考 `.env.example`，禁止提交/分享。云端使用同名 Codespaces development secret，密钥仅由后端读取，服务器不保存原图。本机模式只接受本机请求；Codespaces 模式额外接受当前预览域名的同源请求。
+智谱密钥存于服务端 `.env` 的 `ZHIPU_API_KEY=` 或同名环境变量，参考 `.env.example`，禁止提交/分享。当前云端 `.env` 权限为 600、被 Git 忽略；管理员也可改用 Codespaces development secret。密钥仅由后端读取，服务器不保存原图。本机模式只接受本机请求；Codespaces 模式额外接受当前预览页面的同源请求，兼容隧道对来源头的改写。
 
 ## 搜索与报价
 

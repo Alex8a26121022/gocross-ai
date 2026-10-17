@@ -25,8 +25,9 @@ HOST=0.0.0.0 PORT=5173 DISABLED_MARKET_PLATFORMS=taobao,tmall npm start
 ## 凭据与功能边界
 
 - `.env`、浏览器登录会话和 Cookie 不放入代码仓库或代码压缩包，密钥不会因为上传源码自动进入 Codespace。
-- 项目负责人已确认所有访客都可直接识图。将 `ZHIPU_API_KEY` 配置为仓库的 Codespaces development secret 后停止并重新启动 Codespace，服务端从环境变量读取，不写进前端、Git 或页面。只返回是否已配置及模型名，图片不落盘。
-- 通过 GitHub 注入的 `CODESPACES`、`CODESPACE_NAME`、`GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN` 自动确定当前 5173 HTTPS 预览来源，浏览器上传必须来自该来源。本机原有来源保护保留。公开接口没有用户登录；同源校验不等于身份认证，保留全服务一次一个识图任务、每分钟最多 10 次请求和 8 MB 图片上限，以免并发耗尽免费配额。
+- 项目负责人已确认所有访客都可直接识图，已用 SK-II 商品图片通过云端网页实际上传验证。当前密钥保存在云端工作目录的 `.env`，权限为 600、被 Git 忽略、位于静态服务目录以外；经临时加密封包传输，没有将明文写入命令、仓库或前端。该文件随 `/workspaces` 保留，删除 Codespace 后需重新配置。
+- 仓库 Codespaces secret 写入要求管理员权限，当前协作账号仅有代码写入权限；没有扩大账号授权。仓库管理员以后可将 `ZHIPU_API_KEY` 迁移至 Codespaces development secret，再停止并重新启动 Codespace。服务端支持环境变量优先读取，只返回是否已配置及模型名，图片不落盘。
+- 通过 GitHub 注入的 `CODESPACES`、`CODESPACE_NAME`、`GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN` 自动确定当前 5173 HTTPS 预览来源。隧道会将 Origin 改写成 HTTPS localhost，此时额外要求浏览器 `Sec-Fetch-Site: same-origin`；拒绝跨站请求，本机原有来源保护保留。公开接口没有用户登录，同源校验不等于身份认证；保留全服务一次一个识图任务、每分钟最多 10 次请求和 8 MB 图片上限，以免并发耗尽免费配额。
 - 国内平台取价仍受现有登录及工具访问限制；本配置保留淘宝/天猫自动采集禁用状态，不附带电商账号。
 - 新机器上的汇率、官网商品由其后端独立获取；失败时不会用你电脑缓存或样例价补位。
 
