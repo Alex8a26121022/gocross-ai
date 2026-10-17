@@ -1,0 +1,17 @@
+{
+  "name": "GoCross team preview",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "GoCross shopping guide",
+      "onAutoForward": "notify"
+    }
+  },
+  "containerEnv": {
+    "HOST": "0.0.0.0",
+    "PORT": "5173",
+    "DISABLED_MARKET_PLATFORMS": "taobao,tmall"
+  },
+  "postCreateCommand": "npm test",
+  "postStartCommand": "mkdir -p .runtime && (nohup node server.mjs > .runtime/server.log 2>&1 < /dev/null &)"
+}

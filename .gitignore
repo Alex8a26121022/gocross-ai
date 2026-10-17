@@ -1,0 +1,10 @@
+.runtime/
+node_modules/
+test-results/
+.env
+.env.*
+!.env.example
+# Local shopping authentication state must never be shared.
+shopping-sessions/
+browser-profile/
+playwright/.auth/
