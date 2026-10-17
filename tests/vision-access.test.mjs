@@ -28,3 +28,12 @@ test('保持本机保护，反向代理仅接受本站 Origin', () => {
   assert.equal(canUseVision(request({ host: 'localhost:5173', origin }, { socket }), origin), true);
   assert.equal(canUseVision(request({ host: 'localhost:5173' }), origin), false);
 });
+
+test('代理重写 HTTPS 来源时要求浏览器同源元数据，跨站和缺失元数据均拒绝', () => {
+  const socket = { remoteAddress: '127.0.0.1' };
+  const headers = { host: 'localhost:5173', origin: 'https://localhost:5173', 'sec-fetch-site': 'same-origin' };
+  assert.equal(canUseVision(request(headers, { socket }), origin), true);
+  assert.equal(canUseVision(request(headers, { socket }), ''), false);
+  for (const site of [undefined, 'cross-site', 'same-site', 'none']) assert.equal(canUseVision(request({ ...headers, 'sec-fetch-site': site }, { socket }), origin), false);
+  assert.equal(canUseVision(request({ ...headers, origin: 'http://localhost:5173', 'sec-fetch-site': 'cross-site' }, { socket }), origin), false);
+});

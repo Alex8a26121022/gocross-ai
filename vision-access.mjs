@@ -8,10 +8,14 @@ export function codespaceVisionOrigin(env, port) {
 
 export function canUseVision(req, publicOrigin) {
   const { host = '', origin } = req.headers;
+  const site = req.headers['sec-fetch-site'];
+  if (site && site !== 'same-origin' && site !== 'none') return false;
   const localHost = /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(host);
   const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   if (local && localHost && (!origin || origin === `http://${host}`)) return true;
   if (!publicOrigin) return false;
+  // The Codespaces tunnel rewrites public HTTPS Origin to https://localhost:port.
+  if (local && localHost && origin === `https://${host}` && site === 'same-origin') return true;
   // Origin checks prevent cross-site browser use; this public endpoint is not authenticated.
   // Codespaces can rewrite Host to an internal address; compare the browser's exact Origin.
   if (origin) return origin === publicOrigin;
