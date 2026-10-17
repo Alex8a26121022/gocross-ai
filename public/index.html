@@ -1,36 +1,36 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0f766e">
-  <meta name="description" content="搜索商品、比较当前公开报价，规划附近购物路线。">
-  <title>过关 GoCross · 商品比价</title>
-  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"><script type="module" src="/app.mjs"></script>
-</head>
-<body>
-  <a class="skip-link" href="#main">跳至主要内容</a>
-  <header class="topbar"><a class="brand" href="/"><img src="/assets/mark.svg" width="32" height="32" alt=""><span>过关 <b>GoCross</b></span></a><nav aria-label="主导航"><button id="home" class="text-button" data-zh="发现商品" data-en="Products">发现商品</button><button id="open-stores" class="text-button" data-zh="门店与路线" data-en="Stores & directions">门店与路线</button><button id="language" class="text-button" aria-label="Switch to English">EN</button></nav></header>
-  <main id="main">
-    <div class="page-heading"><h1 data-zh="商品比价" data-en="Compare prices">商品比价</h1><button id="refresh" class="text-button" data-zh="刷新报价" data-en="Refresh prices">刷新报价</button></div>
-    <div class="workspace-grid"><div class="workspace-content">
-      <form id="query-form" class="composer panel"><label for="query" data-zh="搜索商品" data-en="Search products">搜索商品</label><div class="search-row"><input id="query" type="search" maxlength="120" placeholder="商品、品牌或型号，例如 SK II" data-placeholder-zh="商品、品牌或型号，例如 SK II" data-placeholder-en="Product, brand or model, e.g. SK II"><button id="search-button" type="submit" class="primary-button" data-zh="搜索比价" data-en="Search">搜索比价</button></div><div class="upload-row"><label class="upload-button" for="file-input"><span data-icon="image"></span><span data-zh="上传图片找同款" data-en="Find by image">上传图片找同款</span></label><input id="file-input" type="file" accept="image/jpeg,image/png,image/webp"><small data-zh="图片会自动发送至智谱识别" data-en="Images are identified by Zhipu">图片会自动发送至智谱识别</small></div><div id="image-area" class="image-area" hidden><img id="image-preview" alt="上传商品"><div><p id="vision-status" role="status"></p><label for="image-query" data-zh="识别商品" data-en="Identified product">识别商品</label><input id="image-query" type="text" maxlength="120"></div><button id="remove-image" type="button" class="text-button" data-zh="移除" data-en="Remove">移除</button></div><p id="query-error" class="form-error" role="alert" hidden></p></form>
-      <p id="search-status" role="status" class="search-status"></p><p class="price-cadence" data-zh="国内平台每日采集 · 中免查询时更新" data-en="Domestic prices collected daily · CDF updated on search">国内平台每日采集 · 中免查询时更新</p><div id="online-fallback" class="online-fallback panel" role="status" hidden></div><div id="results" class="product-grid" aria-busy="false"></div><div id="pagination" class="pagination"></div>
-    </div>
-          <aside id="store-panel" class="store-locator panel" aria-labelledby="stores-heading">
-            <div class="conditions-heading"><h2 id="stores-heading" data-zh="门店与路线" data-en="Stores & directions">门店与路线</h2><span data-icon="pin"></span></div>
-            <p class="muted" data-zh="找到附近购物地点，再规划怎么去。" data-en="Find nearby shopping locations and plan your journey.">找到附近购物地点，再规划怎么去。</p>
-            <button id="locate-me" type="button" class="secondary-button"><span data-icon="pin"></span><span data-zh="使用我的位置" data-en="Use my location">使用我的位置</span></button>
-            <form id="location-form"><label for="origin" data-zh="出发地点" data-en="Starting point">出发地点</label><div class="location-input"><input id="origin" type="text" maxlength="180" list="known-origins" placeholder="地名，或纬度,经度" data-placeholder-zh="地名，或纬度,经度" data-placeholder-en="Place name, or latitude,longitude"><button class="secondary-button" type="submit" data-zh="设置" data-en="Set">设置</button></div><datalist id="known-origins"><option value="新八佰伴百货公司"><option value="四季名店"><option value="cdf 澳门上葡京店"></datalist></form>
-            <p id="location-status" role="status" class="location-status"></p>
-            <label for="route-mode" data-zh="出行方式" data-en="Travel mode">出行方式</label><select id="route-mode"><option value="walking" data-zh="步行" data-en="Walking">步行</option><option value="transit" data-zh="公交 / 公共交通" data-en="Public transport">公交 / 公共交通</option><option value="driving" data-zh="驾车" data-en="Driving">驾车</option></select>
-            <iframe id="store-map" title="门店位置地图" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
-            <p class="map-credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors · ODbL</a></p>
-            <div id="nearby-stores"></div>
-            <p class="map-note" data-zh="仅在已收录的 3 个购物地点中比较直线距离；路程和时间在地图中查看，门店库存未接入。" data-en="Straight-line distances among 3 listed locations. View travel distance and time in Maps. Store inventory is not connected.">仅在已收录的 3 个购物地点中比较直线距离；路程和时间在地图中查看，门店库存未接入。</p>
-            <p class="map-note" data-zh="定位仅用于本页排序；点击路线后，出发地会传给 Google Maps。" data-en="Location is used locally for sorting. Opening directions sends your origin to Google Maps.">定位仅用于本页排序；点击路线后，出发地会传给 Google Maps。</p>
-          </aside>
-    </div>
-  </main>
-  <dialog id="comparison-dialog"><div class="dialog-heading"><h2 id="comparison-title"></h2><button id="close-comparison" class="text-button" data-zh="关闭" data-en="Close">关闭</button></div><div id="comparison-content"></div></dialog>
-  <div id="toast" class="toast" role="status" hidden></div>
-</body>
-</html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0f766e">
+  <meta name="description" content="搜索商品、比较当前公开报价，规划附近购物路线。">
+  <title>过关 GoCross · 商品比价</title>
+  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"><script type="module" src="/app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳至主要内容</a>
+  <header class="topbar"><a class="brand" href="/"><img src="/assets/mark.svg" width="32" height="32" alt=""><span>过关 <b>GoCross</b></span></a><nav aria-label="主导航"><button id="home" class="text-button" data-zh="发现商品" data-en="Products">发现商品</button><button id="open-stores" class="text-button" data-zh="门店与路线" data-en="Stores & directions">门店与路线</button><button id="language" class="text-button" aria-label="Switch to English">EN</button></nav></header>
+  <main id="main">
+    <div class="page-heading"><h1 data-zh="商品比价" data-en="Compare prices">商品比价</h1><button id="refresh" class="text-button" data-zh="刷新报价" data-en="Refresh prices">刷新报价</button></div>
+    <div class="workspace-grid"><div class="workspace-content">
+      <form id="query-form" class="composer panel"><label for="query" data-zh="搜索商品" data-en="Search products">搜索商品</label><div class="search-row"><input id="query" type="search" maxlength="120" placeholder="商品、品牌或型号，例如 SK II" data-placeholder-zh="商品、品牌或型号，例如 SK II" data-placeholder-en="Product, brand or model, e.g. SK II"><button id="search-button" type="submit" class="primary-button" data-zh="搜索比价" data-en="Search">搜索比价</button></div><div class="upload-row"><label class="upload-button" for="file-input"><span data-icon="image"></span><span data-zh="上传图片找同款" data-en="Find by image">上传图片找同款</span></label><input id="file-input" type="file" accept="image/jpeg,image/png,image/webp"><small data-zh="图片会自动发送至智谱识别" data-en="Images are identified by Zhipu">图片会自动发送至智谱识别</small></div><div id="image-area" class="image-area" hidden><img id="image-preview" alt="上传商品"><div><p id="vision-status" role="status"></p><label for="image-query" data-zh="识别商品" data-en="Identified product">识别商品</label><input id="image-query" type="text" maxlength="120"></div><button id="remove-image" type="button" class="text-button" data-zh="移除" data-en="Remove">移除</button></div><p id="query-error" class="form-error" role="alert" hidden></p></form>
+      <p id="search-status" role="status" class="search-status"></p><p class="price-cadence" data-zh="国内平台每日采集 · 中免查询时更新" data-en="Domestic prices collected daily · CDF updated on search">国内平台每日采集 · 中免查询时更新</p><div id="online-fallback" class="online-fallback panel" role="status" hidden></div><div id="results" class="product-grid" aria-busy="false"></div><div id="pagination" class="pagination"></div>
+    </div>
+          <aside id="store-panel" class="store-locator panel" aria-labelledby="stores-heading">
+            <div class="conditions-heading"><h2 id="stores-heading" data-zh="门店与路线" data-en="Stores & directions">门店与路线</h2><span data-icon="pin"></span></div>
+            <p class="muted" data-zh="找到附近购物地点，再规划怎么去。" data-en="Find nearby shopping locations and plan your journey.">找到附近购物地点，再规划怎么去。</p>
+            <button id="locate-me" type="button" class="secondary-button"><span data-icon="pin"></span><span data-zh="使用我的位置" data-en="Use my location">使用我的位置</span></button>
+            <form id="location-form"><label for="origin" data-zh="出发地点" data-en="Starting point">出发地点</label><div class="location-input"><input id="origin" type="text" maxlength="180" list="known-origins" placeholder="地名，或纬度,经度" data-placeholder-zh="地名，或纬度,经度" data-placeholder-en="Place name, or latitude,longitude"><button class="secondary-button" type="submit" data-zh="设置" data-en="Set">设置</button></div><datalist id="known-origins"><option value="新八佰伴百货公司"><option value="四季名店"><option value="cdf 澳门上葡京店"></datalist></form>
+            <p id="location-status" role="status" class="location-status"></p>
+            <label for="route-mode" data-zh="出行方式" data-en="Travel mode">出行方式</label><select id="route-mode"><option value="walking" data-zh="步行" data-en="Walking">步行</option><option value="transit" data-zh="公交 / 公共交通" data-en="Public transport">公交 / 公共交通</option><option value="driving" data-zh="驾车" data-en="Driving">驾车</option></select>
+            <iframe id="store-map" title="门店位置地图" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+            <p class="map-credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors · ODbL</a></p>
+            <div id="nearby-stores"></div>
+            <p class="map-note" data-zh="仅在已收录的 3 个购物地点中比较直线距离；路程和时间在地图中查看，门店库存未接入。" data-en="Straight-line distances among 3 listed locations. View travel distance and time in Maps. Store inventory is not connected.">仅在已收录的 3 个购物地点中比较直线距离；路程和时间在地图中查看，门店库存未接入。</p>
+            <p class="map-note" data-zh="定位仅用于本页排序；点击路线后，出发地会传给 Google Maps。" data-en="Location is used locally for sorting. Opening directions sends your origin to Google Maps.">定位仅用于本页排序；点击路线后，出发地会传给 Google Maps。</p>
+          </aside>
+    </div>
+  </main>
+  <dialog id="comparison-dialog"><div class="dialog-heading"><h2 id="comparison-title"></h2><button id="close-comparison" class="text-button" data-zh="关闭" data-en="Close">关闭</button></div><div id="comparison-content"></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>

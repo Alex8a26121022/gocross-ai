@@ -1,13 +1,13 @@
-{
-  "name": "gocross-shopping-guide",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "珠澳跨境购物商品搜索与比价",
-  "scripts": {
-    "start": "node server.mjs",
-    "test": "node --test tests/*.test.mjs",
-    "crawl:products": "node scripts/crawl-products.mjs"
-  },
-  "engines": { "node": ">=20" }
-}
+{
+  "name": "gocross-shopping-guide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "珠澳跨境购物商品搜索与比价",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "crawl:products": "node scripts/crawl-products.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
