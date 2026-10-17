@@ -10,6 +10,7 @@ export function canUseVision(req, publicOrigin) {
   const { host = '', origin } = req.headers;
   const site = req.headers['sec-fetch-site'];
   if (site && site !== 'same-origin' && site !== 'none') return false;
+  if (publicOrigin && req.method === 'POST' && !origin) return false;
   const localHost = /^(localhost|127\.0\.0\.1|\[::1\]):\d+$/.test(host);
   const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
   if (local && localHost && (!origin || origin === `http://${host}`)) return true;

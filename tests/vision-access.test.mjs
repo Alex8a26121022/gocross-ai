@@ -24,6 +24,7 @@ test('云端允许本站上传和状态查询，拒绝其他网站、相似域�
 test('保持本机保护，反向代理仅接受本站 Origin', () => {
   const socket = { remoteAddress: '127.0.0.1' };
   assert.equal(canUseVision(request({ host: 'localhost:5173' }, { socket }), ''), true);
+  assert.equal(canUseVision(request({ host: 'localhost:5173' }, { socket }), origin), false);
   assert.equal(canUseVision(request({ host: 'localhost:5173', origin: 'https://evil.example' }, { socket }), origin), false);
   assert.equal(canUseVision(request({ host: 'localhost:5173', origin }, { socket }), origin), true);
   assert.equal(canUseVision(request({ host: 'localhost:5173' }), origin), false);
