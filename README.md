@@ -34,7 +34,7 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 
 公开来源已配置时，只有两个只读状态 GET `/api/agent/status`、`/api/vision/status` 可以省略 `Origin`，且响应仍只有 `{configured, model}`。明确的外站 Origin 或跨站元数据仍会拒绝。
 
-**任何拿到链接的人都共享同一个 DeepSeek 账号的额度。Origin 检查阻止跨站网页嵌入/调用，不限制持链接用户的使用，也不构成登录认证。** 不要将其当作费用上限或私人访问控制。现有并发、频率及图片大小限制保持不变。
+**任何拿到链接的人都共享服务端已配置模型账号的额度。Origin 检查阻止跨站网页嵌入/调用，不限制持链接用户的使用，也不构成登录认证。** 不要将其当作费用上限或私人访问控制。现有并发、频率及图片大小限制保持不变。
 
 ## 一份清单怎样处理
 
@@ -45,7 +45,7 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 - `compare_purchase_channels` 分开比较线上和实际线下报价。中免**官网报价属于线上**，不能当门店报价。缺少任一渠道时返回 `unresolved`，不生成“线上省多少”的结论。
 - `get_exchange_rates` 读取中国银行 MOP/HKD 参考牌价与时间；每半小时后台刷新，失败时标记旧数据。
 - `calculate_cost` 只用本轮工具返回的有效报价 ID 计算件数与参考成本，另加用户提供的交通费；不虚构税费。未知交通费和税费不计入时必须说明。
-- `find_stores` 读取收录的中免上葡京、新八佰伴、四季名店。没有门店库存数据。
+- `find_stores` 读取已收录的 12 个购物目的地；品牌专柜覆盖及来源见 [batch-2.md](docs/batch-2.md)。没有门店库存数据。
 - `plan_shopping_route` 接收逐项购买方式，只有 `in_store` 项进入路线；`online` / `unresolved` 项排除，同店合并。坐标已知时在最多 3 个地点中枚举直线距离顺序，否则保留建议顺序；不声称最短道路路线。步行/驾车生成多站 Google Maps 链接，公交提供逐段链接。实际交通时间、道路与费用交给外部地图。
 
 门店来源、导航和实际工具执行记录在回答中提供；导航链接直接可见，其他来源可展开。右上角语言开关同时切换界面和已有 AI 回答。模型一次返回中英两份受限答案，切换不重复调用模型。用户原始输入保留原文。
@@ -86,4 +86,4 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 
 ## 团队预览
 
-[既有 Codespace 共享地址](https://super-duper-robot-jrqrj964x76qh5rxq-5173.app.github.dev/)，运行和同步步骤见 [team-preview.md](docs/team-preview.md)。**2026-10-19 这版仅修改本机，尚未推送或更新云端，也未传递 DeepSeek 密钥。** Codespace 停止/休眠时地址不可用。本次压缩包只作参考，未把其中旧模拟引擎或参考价格并入运行数据。
+[打开 Codespace 团队预览](https://super-duper-robot-jrqrj964x76qh5rxq-5173.app.github.dev/)，运行和同步步骤见 [team-preview.md](docs/team-preview.md)。2026-10-24 已同步最新应用源码并启动云端服务，本机与云端均完整通过 134 项测试；公开首页、前端模块与澳门背景图已核对为本次提交内容。沿用云端原有私有模型配置，本机密钥、登录会话和协作日志未上传。Codespace 停止/休眠时地址不可用。
