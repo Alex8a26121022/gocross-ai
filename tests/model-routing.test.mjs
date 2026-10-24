@@ -56,7 +56,9 @@ test('免费型号全部冷却后也不能跳过免费入口直接付费', async
   assert.ok(hosts.length && hosts.every(host => host === 'open.bigmodel.cn'));
 });
 
-test('只有真实免费等待超时才调用 DeepSeek，下一次生成仍先免费', async () => {
+test('只有真实免费等待超时才调用 DeepSeek，计时器早触发也不提前付费，下一次仍先免费', async t => {
+  const timeout = AbortSignal.timeout.bind(AbortSignal);
+  t.mock.method(AbortSignal, 'timeout', ms => timeout(ms <= 40 ? Math.max(1, ms - 2) : ms));
   const hosts = []; let freeCalls = 0; const started = performance.now();
   const result = await runAgent(input, { ...keys, freeBudget: 40, fetchImpl: async (url, options) => {
     const host = new URL(url).host; hosts.push(host);

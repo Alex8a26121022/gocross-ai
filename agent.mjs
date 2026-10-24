@@ -345,7 +345,9 @@ export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce,
       }
     }
     // 快速报错、无效输出和型号冷却均不能触发付费请求。
-    if (!timedOut || performance.now() - freeStarted < freeBudget || !key) throw lastError || new AgentError('AGENT_UPSTREAM_ERROR', 502);
+    if (!timedOut || !key) throw lastError || new AgentError('AGENT_UPSTREAM_ERROR', 502);
+    // 定时器可能略早触发；实际计时满十秒之前仍不能发出付费请求。
+    while (performance.now() - freeStarted < freeBudget) await new Promise(resolve => setTimeout(resolve, 1));
     if (signal.aborted) throw new AgentError('AGENT_TIMEOUT', 504);
     paidWebAllowed = true;
     const started = Date.now();
