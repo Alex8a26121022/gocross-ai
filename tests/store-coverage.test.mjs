@@ -32,7 +32,7 @@ test('buying options cover four or more destinations while route choices are sor
 });
 test('agent store suggestions expose region/district and specific verified counters without inventing units', async () => {
   let sawOptions = false;
-  await runAgent({ message: '雅诗兰黛面霜在哪买', language: 'zh' }, { key: 'test', fetchImpl: async (_, options) => {
+  await runAgent({ message: '雅诗兰黛面霜在哪买', language: 'zh' }, { zhipuKey: 'z-test', key: 'test', fetchImpl: async (_, options) => {
     const body = JSON.parse(options.body);
     const tool = body.messages.find(message => message.role === 'tool');
     if (!tool) return { ok: true, json: async () => ({ choices: [{ finish_reason: 'tool_calls', message: { tool_calls: [{ id: 'spots', type: 'function', function: { name: 'suggest_buying_spots', arguments: JSON.stringify({ items: [{ item: '雅诗兰黛面霜', category: '美妆' }], origin: '' }) } }] } }] }) };

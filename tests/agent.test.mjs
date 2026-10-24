@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { setTimeout as delay } from 'node:timers/promises';
 import { runAgent, parseAgentAnswer, validateAgentInput, readAgentKey, followUpResult, productCard, resetModelCooldowns } from '../agent.mjs';
 import { comparePurchaseChannels, planPurchaseRoute } from '../purchasing.mjs';
 import { shoppingRoute } from '../public/maps.mjs';
@@ -40,19 +41,19 @@ test('短回复长度与商品卡 ID 必须在本轮数据内', () => {
 test('追问独立结束当前轮，不检索、不再调最终模型；下一轮保留完整清单', async () => {
   const args = { question_zh: 'SK-II 想买哪款和规格？面膜预算多少？', question_en: 'Which SK-II product and size, and what is your mask budget?', missing: ['specification', 'budget'] };
   const initial = '想买SKII 和面膜 葡挞'; let calls = 0;
-  const first = await runAgent({ message: initial, language: 'zh' }, { key: 'test', commerce: { search: () => { throw Error('must not search'); } }, fetchImpl: async () => { calls++; return response({ tool_calls: [call('ask_follow_up', args)] }); } });
+  const first = await runAgent({ message: initial, language: 'zh' }, { zhipuKey: 'z-test', key: 'test', commerce: { search: () => { throw Error('must not search'); } }, fetchImpl: async () => { calls++; return response({ tool_calls: [call('ask_follow_up', args)] }); } });
   assert.equal(calls, 1); assert.equal(first.kind, 'clarify'); assert.equal(first.zh.answer, ''); assert.equal(first.zh.question, args.question_zh); assert.deepEqual(first.trace, []);
-  const verbose = await runAgent(input, { key: 'test', fetchImpl: async () => response({ tool_calls: [call('ask_follow_up', { ...args, question_en: 'x'.repeat(200), missing: ['specification', 'budget', 'origin'] })] }) });
+  const verbose = await runAgent(input, { zhipuKey: 'z-test', key: 'test', fetchImpl: async () => response({ tool_calls: [call('ask_follow_up', { ...args, question_en: 'x'.repeat(200), missing: ['specification', 'budget', 'origin'] })] }) });
   assert.deepEqual(verbose.missing, ['specification', 'budget']); assert.ok(verbose.en.question.length <= 160); assert.deepEqual(verbose.trace, []);
   const history = [{ role: 'user', content: initial }, { role: 'assistant', content: first.zh.question }];
-  await runAgent({ message: '神仙水230ml，面膜300元以内', language: 'zh', history }, { key: 'test', fetchImpl: async (_, options) => {
+  await runAgent({ message: '神仙水230ml，面膜300元以内', language: 'zh', history }, { zhipuKey: 'z-test', key: 'test', fetchImpl: async (_, options) => {
     const body = JSON.parse(options.body);
     assert.ok(body.messages.some((m) => m.role === 'user' && m.content === initial));
     assert.ok(body.messages.some((m) => m.role === 'assistant' && m.content === args.question_zh));
     return response({ content: body.response_format ? JSON.stringify(answer()) : 'READY' });
   } });
   for (const bad of [{ ...args, missing: [] }, { ...args, missing: ['product', 'budget', 'origin'] }, { ...args, missing: ['product', 'product'] }, { ...args, question_en: 'x'.repeat(161) }, { ...args, question_zh: 'https://example.com' }]) assert.throws(() => followUpResult(bad), /INVALID_AGENT_TOOL/);
-  await assert.rejects(runAgent(input, { key: 'test', fetchImpl: async () => response({ tool_calls: [call('ask_follow_up', args), call('get_exchange_rates', {})] }) }), /INVALID_AGENT_TOOL/);
+  await assert.rejects(runAgent(input, { zhipuKey: 'z-test', key: 'test', fetchImpl: async () => response({ tool_calls: [call('ask_follow_up', args), call('get_exchange_rates', {})] }) }), /INVALID_AGENT_TOOL/);
 });
 test('商品卡只使用真实商品图与新鲜报价，拒绝伪造链接和不完整换算排名', () => {
   const product = { id: 'P1', name: 'Product', image: 'https://pic.cdfmembers.com/product.jpg', sourceUrl: 'https://glp.cdfgmo.com/', offers: [offer('high', 100), offer('low', 80), { ...offer('stale', 1), capturedAt: new Date(now - 86400001).toISOString() }] };
@@ -91,15 +92,15 @@ test('模型选工具→真实服务结果→成本/渠道判断→排除线上�
   const product = { id: 'B', name: 'B 100ml', specification: '100ml', sourceUrl: 'https://glp.cdfgmo.com/', offers: [offer('online', 80), offer('offline', 100, 'in_store', 'cdf')] };
   let step = 0;
   const fetchImpl = async (url, options) => {
-    assert.equal(url, 'https://api.deepseek.com/chat/completions'); const body = JSON.parse(options.body); requests.push(body);
-    assert.equal(body.model, 'deepseek-flash'); assert.equal(body.thinking.type, 'disabled');
+    assert.equal(url, 'https://open.bigmodel.cn/api/paas/v4/chat/completions'); const body = JSON.parse(options.body); requests.push(body);
+    assert.ok(body.model.startsWith('glm-')); assert.equal(body.thinking.type, 'disabled');
     if (step && !body.response_format) assert.ok(body.tools.every((tool) => tool.function.name !== 'ask_follow_up'));
     if (step++ === 0) return response({ tool_calls: [call('search_products', { query: 'B 100ml' })] });
     if (step === 2) return response({ tool_calls: [call('compare_purchase_channels', { product_id: 'B' }), call('calculate_cost', { offer_id: 'online', quantity: 2, extra_cost_cny: 20, budget_cny: 200 }), call('plan_shopping_route', { origin: '珠海', purchases: [{ item: 'A', channel: 'in_store', store_id: 'cdf' }, { item: 'B', channel: 'online', store_id: '' }, { item: 'C', channel: 'in_store', store_id: 'four-seasons' }], mode: 'walking' })] });
     if (!body.response_format) return response({ content: 'ready' });
     return response({ content: JSON.stringify(answer(['S1'])) });
   };
-  const result = await runAgent(input, { key: 'test-secret', commerce: { search: async () => ({ products: [product], sources: [{ id: 'jd', status: 'ok' }] }) }, fetchImpl, now: () => now });
+  const result = await runAgent(input, { zhipuKey: 'z-test', key: 'test-secret', commerce: { search: async () => ({ products: [product], sources: [{ id: 'jd', status: 'ok' }] }) }, fetchImpl, now: () => now });
   const toolData = requests.at(-1).messages.filter((m) => m.role === 'tool').map((m) => JSON.parse(m.content));
   assert.equal(toolData[1].cheaper_verified_channel, 'online'); assert.equal(toolData[2].reference_total_cny, 180);
   assert.deepEqual(toolData[3].online_items, ['B']); assert.deepEqual(toolData[3].stops.map((s) => s.items), [['A'], ['C']]);
@@ -112,8 +113,8 @@ test('图片先交智谱视觉识别，DeepSeek 只收到文字结果', async ()
   const identification = { is_product: true, brand: '示例品牌', product_name: '精华水', specification: '230 mL', category: '护肤', visible_text: ['230 mL'], uncertain_fields: [] };
   const deepseekBodies = [];
   let visionCalls = 0;
-  const result = await runAgent({ message: '', language: 'en', image }, { key: 'test', visionKey: 'test-vision', fetchImpl: async (url, options) => {
-    if (String(url).includes('bigmodel.cn')) {
+  const result = await runAgent({ message: '', language: 'en', image }, { zhipuKey: 'z-test', key: 'test', freeBudget: 40, visionKey: 'test-vision', fetchImpl: async (url, options) => {
+    if (String(url).includes('bigmodel.cn') && JSON.parse(options.body).model.includes('v-flash')) {
       visionCalls++;
       const body = JSON.parse(options.body);
       const imagePart = body.messages[0].content.find((part) => part.type === 'image_url');
@@ -121,6 +122,7 @@ test('图片先交智谱视觉识别，DeepSeek 只收到文字结果', async ()
       return response({ content: JSON.stringify(identification) });
     }
     const body = JSON.parse(options.body);
+    if (String(url).includes('bigmodel.cn')) return delay(2000, null, { signal: options.signal });
     deepseekBodies.push(body);
     const content = body.messages.find((m) => m.role === 'user').content;
     assert.equal(typeof content, 'string');
@@ -134,9 +136,9 @@ test('图片先交智谱视觉识别，DeepSeek 只收到文字结果', async ()
 });
 test('未知工具、伪造工具参数不会执行任意代码或 URL', async () => {
   let fetched = 0;
-  await assert.rejects(runAgent(input, { key: 'test', fetchImpl: async () => response({ tool_calls: [call('run_shell', { cmd: 'anything' })] }) }), /INVALID_AGENT_TOOL/);
+  await assert.rejects(runAgent(input, { zhipuKey: 'z-test', key: 'test', fetchImpl: async () => response({ tool_calls: [call('run_shell', { cmd: 'anything' })] }) }), /INVALID_AGENT_TOOL/);
   const requests = [];
-  await runAgent(input, { key: 'test', commerce: { search: async () => { fetched++; } }, fetchImpl: async (url, options) => {
+  await runAgent(input, { zhipuKey: 'z-test', key: 'test', commerce: { search: async () => { fetched++; } }, fetchImpl: async (url, options) => {
     const body = JSON.parse(options.body); requests.push(body);
     return response(requests.length === 1 ? { tool_calls: [call('search_products', { query: 'B', url: 'http://private/' })] } : { content: body.response_format ? JSON.stringify(answer()) : 'done' });
   } });
@@ -145,16 +147,17 @@ test('未知工具、伪造工具参数不会执行任意代码或 URL', async (
 test('网络错误和供应商错误脱敏；不自动重试产生额外费用', async () => {
   await assert.rejects(runAgent(input, { key: '' }), /AGENT_NOT_CONFIGURED/);
   for (const status of [401, 403, 429, 500]) {
+    resetModelCooldowns();
     let calls = 0;
-    await assert.rejects(runAgent(input, { key: 'private-value', fetchImpl: async () => { calls++; return { ok: false, status, json: async () => { throw Error('must not read'); } }; } }), (err) => /^AGENT_/.test(err.code) && !err.message.includes('private-value'));
-    assert.equal(calls, 1);
+    await assert.rejects(runAgent(input, { zhipuKey: 'z-test', key: 'private-value', fetchImpl: async () => { calls++; return { ok: false, status, json: async () => { throw Error('must not read'); } }; } }), (err) => /^AGENT_/.test(err.code) && !err.message.includes('private-value'));
+    assert.equal(calls, 3);
   }
-  await assert.rejects(runAgent(input, { key: 'x', fetchImpl: async () => { throw new Error('private-value'); } }), /AGENT_NETWORK_ERROR/);
-  await assert.rejects(runAgent(input, { key: 'x', fetchImpl: async () => response({ content: '{}' }, 'length') }), /INVALID_AGENT_RESULT/);
+  await assert.rejects(runAgent(input, { zhipuKey: 'z-test', key: 'x', fetchImpl: async () => { throw new Error('private-value'); } }), /AGENT_NETWORK_ERROR/);
+  await assert.rejects(runAgent(input, { zhipuKey: 'z-test', key: 'x', fetchImpl: async () => response({ content: '{}' }, 'length') }), /INVALID_AGENT_RESULT/);
 });
 test('工具循环达到四轮后必须结束并输出 JSON', async () => {
   let count = 0;
-  const result = await runAgent(input, { key: 'x', rates: { get: async () => ({ status: 'unavailable' }) }, fetchImpl: async (url, options) => {
+  const result = await runAgent(input, { zhipuKey: 'z-test', key: 'x', rates: { get: async () => ({ status: 'unavailable' }) }, fetchImpl: async (url, options) => {
     count++; const body = JSON.parse(options.body);
     return response(body.response_format ? { content: JSON.stringify(answer()) } : { tool_calls: [call('get_exchange_rates', {}, `r${count}`)] });
   } });
@@ -166,7 +169,7 @@ test('从环境变量读取密钥，不包含于返回模型数据', async () =>
 });
 test('等待数据工具时取消任务会立即结束，不再调用模型', async () => {
   const controller = new AbortController(); let modelCalls = 0;
-  const task = runAgent(input, { key: 'x', signal: controller.signal, commerce: { search: async () => { controller.abort(); return new Promise(() => {}); } }, fetchImpl: async () => { modelCalls++; return response({ tool_calls: [call('search_products', { query: 'B' })] }); } });
+  const task = runAgent(input, { zhipuKey: 'z-test', key: 'x', signal: controller.signal, commerce: { search: async () => { controller.abort(); return new Promise(() => {}); } }, fetchImpl: async () => { modelCalls++; return response({ tool_calls: [call('search_products', { query: 'B' })] }); } });
   await assert.rejects(task, /AGENT_TIMEOUT/); assert.equal(modelCalls, 1);
 });
 test('文字模型免费优先：默认走智谱免费型号，不调用付费兜底', async () => {

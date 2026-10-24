@@ -58,7 +58,7 @@ test('the answer validator rejects invented customs numbers and preserves the so
 test('customs questions always obtain the facts and correct invented model limits without changing model routing', async () => {
   let finals = 0;
   const facts = customsAllowance({ origin: 'macau', traveller: 'resident' });
-  const result = await runAgent({ message: '澳门回内地海关免税额度是多少', language: 'zh' }, { key: 'test', fetchImpl: async (_, options) => {
+  const result = await runAgent({ message: '澳门回内地海关免税额度是多少', language: 'zh' }, { zhipuKey: 'z-test', key: 'test', fetchImpl: async (_, options) => {
     const body = JSON.parse(options.body);
     const answer = customsFallback(facts); answer.zh.answer = '免税额度9999元'; answer.en.answer = 'Allowance: 9999 CNY';
     if (body.response_format) finals++;

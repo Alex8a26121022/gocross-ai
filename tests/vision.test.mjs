@@ -51,7 +51,7 @@ test('真实请求格式包含图片与指定免费模型，密钥只进入鉴�
     assert.equal(url, 'https://open.bigmodel.cn/api/paas/v4/chat/completions');
     assert.equal(options.headers.Authorization, `Bearer ${key}`);
     const body = JSON.parse(options.body);
-    assert.equal(body.model, visionModel); assert.equal(body.messages[0].content[0].image_url.url, image);
+    assert.equal(body.model, visionModel); assert.equal(body.thinking.type, 'disabled'); assert.equal(body.messages[0].content[0].image_url.url, image);
     assert.equal(options.body.includes(key), false);
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(identification) } }] }));
   } });

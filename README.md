@@ -13,10 +13,12 @@
 在已有 `.env` 中添加下面一行，不要覆盖原来的其他配置：
 
 ```dotenv
+ZHIPU_API_KEY=你的智谱官方密钥
+# 可选：免费文字请求等待满 10 秒仍超时后的兜底
 DEEPSEEK_API_KEY=你的DeepSeek官方密钥
 ```
 
-也可以配置 `ZHIPU_API_KEY`，用于智谱免费文字路由及商品图片识别；文字任务至少需要上述两项中的一项，图片识别需要智谱密钥，Search/Fetch 工具需要 DeepSeek 密钥。支持同名环境变量；模型密钥按请求读取，修改密钥后无需重启。密钥不进入前端、返回数据、Git 或日志。不要把 `.env` 发到聊天、提交仓库或放在 `public/`；只能作为私有服务端配置交给已授权的部署环境。`.env.example` 只有配置名称和公开来源示例。旧 `/api/vision` 接口保留兼容。
+`ZHIPU_API_KEY` 是免费文字入口及商品识图的必需配置，不能只配 DeepSeek 后跳过免费模型直接付费。DeepSeek 是可选的超时兜底；收费 Search/Fetch 也仅在本轮发生免费文字超时后开放。支持同名环境变量；模型密钥按请求读取，修改密钥后无需重启。密钥不进入前端、返回数据、Git 或日志。不要把 `.env` 发到聊天、提交仓库或放在 `public/`；只能作为私有服务端配置交给已授权的部署环境。`.env.example` 只有配置名称和公开来源示例。旧 `/api/vision` 接口保留兼容。
 
 ## WorkBuddy 部署与同源保护
 
@@ -41,7 +43,7 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 例如用户需要 A/B/C：逐项检索同款同规格报价，比较线上与实际门店报价。B 若在已核实的可比报价中线上更便宜，就说明线上渠道，并从到店采购路线排除 B；A/C 的到店采购按门店合并，再生成路线。未确定购买方式的商品单独说明，不强行安排门店。
 
 - `search_products` 复用真实商品及国内平台每日采集服务；每次最多交给模型 6 件候选。
-- `search_web` / `fetch_web_page` 使用同一个 DeepSeek Key 调用 10 月 17 日开放的独立 Search/Fetch API；查找受限官方来源及商品链接，并读取本轮发现的允许页面。每轮最多合计 3 次，网页正文最多 6500 字符；摘要/网页文字不直接进入数值比价，不代理抓取京东/淘宝/天猫登录或风控页面。实际测试 Search 与澳门海关页面 Fetch 成功；费用与研究见 [deepseek-research.md](docs/deepseek-research.md)。
+- `search_web` / `fetch_web_page` 使用同一个 DeepSeek Key 调用独立且按次计费的 Search/Fetch API，仅在本轮免费文字请求实际超时后开放；免费模型正常响应时不展示这些工具，伪造调用也不会发出收费请求。每轮最多合计 3 次，网页正文最多 6500 字符；摘要/网页文字不直接进入数值比价，不代理抓取京东/淘宝/天猫登录或风控页面。费用与研究见 [deepseek-research.md](docs/deepseek-research.md)。
 - `compare_purchase_channels` 分开比较线上和实际线下报价。中免**官网报价属于线上**，不能当门店报价。缺少任一渠道时返回 `unresolved`，不生成“线上省多少”的结论。
 - `get_exchange_rates` 读取中国银行 MOP/HKD 参考牌价与时间；每半小时后台刷新，失败时标记旧数据。
 - `calculate_cost` 只用本轮工具返回的有效报价 ID 计算件数与参考成本，另加用户提供的交通费；不虚构税费。未知交通费和税费不计入时必须说明。
@@ -68,7 +70,9 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 
 ## 输出与调用边界
 
-当前文字路由优先尝试智谱 `glm-4-flash`、`glm-4.7-flash`、`glm-4.5-flash`，DeepSeek `deepseek-flash` 作为兜底；路线任务优先使用 DeepSeek。工具规划与最终回答的预算、型号冷却及结构无效后的一次重试以 `agent.mjs` 为准；整轮 150 秒截止。长清单超预算时说明未完成部分。
+文字规划、路线、最终回答与格式修正统一先尝试智谱免费型号 `glm-4-flash`、`glm-4.7-flash`、`glm-4.5-flash`，文字与主视觉均显式关闭思考模式。每次文字生成给免费型号合计 10 秒；仅当请求实际等待到期且仍未完成响应，才允许该次生成切到 `deepseek-flash`。后续生成仍重新从免费型号开始。快速 429/5xx、网络错误、无效 JSON、型号冷却或只有 DeepSeek 密钥均不能直接触发付费；所有免费型号快速失败时返回明确失败，格式错误则免费修正一次或保守返回已有工具数据。停止请求不切付费。整轮 150 秒截止。
+
+项目是否需要思考模式、官方免费型号核对、按次收费工具边界及离线验证见 [model-cost-policy.md](docs/model-cost-policy.md)。`GLM-5.3-Flash` 官方 API 有输入/输出价格，不纳入免费候选。
 
 主回答限制为中文 240 / 英文 520 字符；追问为 80 / 160 字符。依据/下一步各最多一条、120 / 180 字符，默认折叠。模糊需求通过 `ask_follow_up` 先问最多两个相关关键细节，本轮不执行外部检索；回复后利用对话历史继续处理完整清单。明确型号的查价无需强制预算，已选门店的导航无需再问规格。
 
@@ -88,4 +92,4 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 
 [打开 Codespace 团队预览](https://super-duper-robot-jrqrj964x76qh5rxq-5173.app.github.dev/)，运行和同步步骤见 [team-preview.md](docs/team-preview.md)。2026-10-24 已同步最新应用源码并启动云端服务，本机与云端均完整通过 134 项测试；公开首页、前端模块与澳门背景图已核对为本次提交内容。沿用云端原有私有模型配置，本机密钥、登录会话和协作日志未上传。Codespace 停止/休眠时地址不可用。
 
-当前云端已配置智谱、尚未配置 DeepSeek；商品查询曾返回参考卡，但后续浏览器请求也出现分析失败。完整兜底和 Search/Fetch 能力仍待云端私有配置，不能把代码同步或测试通过当成所有真实对话均可用。
+2026-10-25 用户已明确授权把既有 DeepSeek 密钥补入原 Codespace 的私有 `.env`，原智谱配置保留。凭据未进入仓库；费用控制按上面的“免费实际超时才兜底”策略执行。配置与测试通过不代表所有真实商品、规格和门店库存均已核实。

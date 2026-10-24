@@ -8,7 +8,7 @@ import { createRateService } from './rates.mjs';
 import { createCatalogueService, createProductSearch } from './catalogue.mjs';
 import { validateIdentification } from './matching.mjs';
 import { createCommerceService } from './commerce.mjs';
-import { readAgentConfig, runAgent, agentModel, primaryAgentModel, AgentError } from './agent.mjs';
+import { readAgentConfig, runAgent, primaryAgentModel, AgentError } from './agent.mjs';
 
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const port = Number(process.env.PORT || 5173);
@@ -60,7 +60,7 @@ const server = http.createServer(async (req, res) => {
   if (req.url?.startsWith('/api/agent/')) {
     try {
       if (!canUseVision(req, visionOrigin, publicOrigins)) { json(res, 403, { error: 'AGENT_ORIGIN_DENIED' }); return; }
-      if (req.url === '/api/agent/status' && req.method === 'GET') { const config = await readAgentConfig().catch(() => ({ zhipu: '', deepseek: '' })); json(res, 200, { configured: Boolean(config.zhipu || config.deepseek), model: config.zhipu ? primaryAgentModel : agentModel }); return; }
+      if (req.url === '/api/agent/status' && req.method === 'GET') { const config = await readAgentConfig().catch(() => ({ zhipu: '', deepseek: '' })); json(res, 200, { configured: Boolean(config.zhipu), model: primaryAgentModel }); return; }
       if (req.url !== '/api/agent/message' || req.method !== 'POST') { json(res, 405, { error: 'METHOD_NOT_ALLOWED' }); return; }
       if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw new AgentError('INVALID_AGENT_REQUEST', 415);
       if (Number(req.headers['content-length']) > 12 * 1024 * 1024) throw new AgentError('IMAGE_TOO_LARGE', 413);

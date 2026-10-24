@@ -26,13 +26,13 @@ export async function readAgentKey() {
   try { return await readEnvValue('DEEPSEEK_API_KEY'); }
   catch { throw new AgentError('AGENT_CONFIG_ERROR', 503); }
 }
-// 智谱密钥同时用于免费文字模型与视觉识别；DeepSeek 仅作兜底，缺一即可运行。
+// 智谱是必需的免费入口；DeepSeek 只在免费请求等待满十秒后仍超时时兜底。
 export async function readAgentConfig() {
   let zhipu = '';
   let deepseek = '';
   try { zhipu = await readEnvValue('ZHIPU_API_KEY'); } catch { zhipu = ''; }
   try { deepseek = await readEnvValue('DEEPSEEK_API_KEY'); } catch { deepseek = ''; }
-  if (!zhipu && !deepseek) throw new AgentError('AGENT_CONFIG_ERROR', 503);
+  if (!zhipu) throw new AgentError('AGENT_CONFIG_ERROR', 503);
   return { zhipu, deepseek };
 }
 const object = (value) => Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -164,10 +164,9 @@ export function fallbackAnswer(products = new Map()) {
 
 export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce, rates, fetchImpl = fetch, signal = AbortSignal.timeout(150000), now = Date.now, visionKey: injectedVisionKey, freeBudget = freeBudgetMs } = {}) {
   const input = validateAgentInput(raw);
-  if (!key && !injectedZhipuKey) throw new AgentError('AGENT_NOT_CONFIGURED', 503);
-  const freeKeys = injectedZhipuKey ? [...freeAgentModels] : [];
-  // 路线类问题必须真的调用路线工具并由服务端排序，免费型号常跳过工具，这类规划直接用付费模型。
-  const routeIntent = /(怎么走|路线|顺路|导航|行程|从.{0,12}出发|route|directions|itinerary)/i.test(input.message);
+  if (!injectedZhipuKey) throw new AgentError('AGENT_NOT_CONFIGURED', 503);
+  const freeKeys = [...freeAgentModels];
+  let paidWebAllowed = false;
   let usedModel = null;
   const sources = [], trace = [], knownOffers = new Map(), knownProducts = new Map(), referenceItems = new Map();
   const usageLog = [];
@@ -188,6 +187,7 @@ export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce,
     } catch { return null; }
   }
   async function execute(name, args) {
+    if (['search_web', 'fetch_web_page'].includes(name) && !paidWebAllowed) throw new Error('PAID_WEB_REQUIRES_FREE_TIMEOUT');
     if (name === 'customs_allowance') {
       if (!object(args) || Object.keys(args).some(key => !['origin', 'traveller', 'destination'].includes(key)) || typeof args.origin !== 'string' || args.origin.length > 60 || typeof args.traveller !== 'string') throw new Error('INVALID_TOOL_ARGUMENTS');
       customsEvidence = customsAllowance(args);
@@ -297,14 +297,15 @@ export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce,
   const history = input.history.slice();
   while (history.length && history.at(-1).role === 'user' && history.at(-1).content.trim() === input.message.trim()) history.pop();
   const messages = [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content }];
-  const payloadFor = (model, final) => ({ model, messages, thinking: { type: 'disabled' }, max_tokens: final ? 1400 : 800, ...(final ? { response_format: { type: 'json_object' } } : { tools: used ? toolDefinitions.filter((tool) => tool.function.name !== 'ask_follow_up') : toolDefinitions }) });
+  const payloadFor = (model, final) => ({ model, messages, thinking: { type: 'disabled' }, max_tokens: final ? 1400 : 800, ...(final ? { response_format: { type: 'json_object' } } : { tools: toolDefinitions.filter(tool => (!used || tool.function.name !== 'ask_follow_up') && (paidWebAllowed || !['search_web', 'fetch_web_page'].includes(tool.function.name))) }) });
   async function callModel({ url, apiKey, model, timeout, final }) {
+    const timeoutSignal = AbortSignal.timeout(timeout);
     let response;
     try {
-      response = await fetchImpl(url, { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, signal: AbortSignal.any([signal, AbortSignal.timeout(timeout)]), body: JSON.stringify(payloadFor(model, final)) });
+      response = await fetchImpl(url, { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, signal: AbortSignal.any([signal, timeoutSignal]), body: JSON.stringify(payloadFor(model, final)) });
     } catch (error) {
       if (signal.aborted) throw new AgentError('AGENT_TIMEOUT', 504);
-      throw new AgentError(['TimeoutError', 'AbortError'].includes(error.name) ? 'AGENT_SLOW' : 'AGENT_NETWORK_ERROR', 504);
+      throw new AgentError(timeoutSignal.aborted ? 'AGENT_SLOW' : 'AGENT_NETWORK_ERROR', 504);
     }
     if (!response.ok) throw new AgentError([401, 403].includes(response.status) ? 'AGENT_AUTH_ERROR' : response.status === 429 ? 'AGENT_RATE_LIMIT' : 'AGENT_UPSTREAM_ERROR', response.status === 429 ? 429 : 502);
     try {
@@ -314,42 +315,49 @@ export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce,
       if (!choice || choice.finish_reason === 'length' || !object(choice.message)) throw 0;
       return choice.message;
     } catch (error) {
+      if (signal.aborted) throw new AgentError('AGENT_TIMEOUT', 504);
+      if (timeoutSignal.aborted) throw new AgentError('AGENT_SLOW', 504);
       if (error instanceof AgentError) throw error;
       throw new AgentError('INVALID_AGENT_RESULT', 502);
     }
   }
-  async function completion(final = false, { paidOnly = false, budget = freeBudget } = {}) {
-    const paid = key ? [{ url: endpoint, apiKey: key, model: agentModel, free: false }] : [];
-    let attempts = paidOnly && paid.length ? paid : [
-      ...freeKeys.filter((model) => !cooling(model)).map((model) => ({ url: zhipuEndpoint, apiKey: injectedZhipuKey, model, free: true })),
-      ...paid,
-    ];
-    // 免费型号全部处于冷却期时仍尝试一次首选免费型号，避免只剩付费兜底。
-    if (!attempts.length && injectedZhipuKey) attempts = [{ url: zhipuEndpoint, apiKey: injectedZhipuKey, model: freeAgentModels[0], free: true }];
-    if (!attempts.length) throw new AgentError('AGENT_NOT_CONFIGURED', 503);
-    let remaining = budget;
-    let lastError;
-    for (const attempt of attempts) {
+  async function completion(final = false) {
+    const available = freeKeys.filter(model => !cooling(model));
+    const attempts = available.length ? available : [freeKeys[0]];
+    const freeStarted = performance.now();
+    let lastError, timedOut = false;
+    for (const model of attempts) {
       if (signal.aborted) throw new AgentError('AGENT_TIMEOUT', 504);
-      const timeout = attempt.free ? remaining : 35000;
-      if (timeout <= 250) continue;
+      const timeout = Math.ceil(freeBudget - (performance.now() - freeStarted));
+      if (timeout <= 0) break;
       const started = Date.now();
       try {
-        const message = await callModel({ ...attempt, timeout, final });
-        usedModel = attempt.model;
-        routeLog.push({ model: attempt.model, ms: Date.now() - started, status: 'ok' });
+        const message = await callModel({ url: zhipuEndpoint, apiKey: injectedZhipuKey, model, timeout, final });
+        usedModel = model;
+        routeLog.push({ model, ms: Date.now() - started, status: 'ok' });
         return message;
       } catch (error) {
         lastError = error;
-        routeLog.push({ model: attempt.model, ms: Date.now() - started, status: error.code });
+        routeLog.push({ model, ms: Date.now() - started, status: error.code });
         if (error.code === 'AGENT_TIMEOUT') throw error;
-        if (attempt.free) {
-          remaining = Math.max(0, remaining - Math.max(0, Date.now() - started));
-          if (['AGENT_RATE_LIMIT', 'AGENT_UPSTREAM_ERROR', 'AGENT_SLOW', 'AGENT_NETWORK_ERROR', 'INVALID_AGENT_RESULT', 'AGENT_AUTH_ERROR'].includes(error.code)) modelCooldown.set(attempt.model, Date.now() + 60000);
-        }
+        if (['AGENT_RATE_LIMIT', 'AGENT_UPSTREAM_ERROR', 'AGENT_SLOW', 'AGENT_NETWORK_ERROR', 'INVALID_AGENT_RESULT', 'AGENT_AUTH_ERROR'].includes(error.code)) modelCooldown.set(model, Date.now() + 60000);
+        if (error.code === 'AGENT_SLOW') { timedOut = true; break; }
       }
     }
-    throw lastError || new AgentError('AGENT_UPSTREAM_ERROR', 502);
+    // 快速报错、无效输出和型号冷却均不能触发付费请求。
+    if (!timedOut || performance.now() - freeStarted < freeBudget || !key) throw lastError || new AgentError('AGENT_UPSTREAM_ERROR', 502);
+    if (signal.aborted) throw new AgentError('AGENT_TIMEOUT', 504);
+    paidWebAllowed = true;
+    const started = Date.now();
+    try {
+      const message = await callModel({ url: endpoint, apiKey: key, model: agentModel, timeout: 35000, final });
+      usedModel = agentModel;
+      routeLog.push({ model: agentModel, ms: Date.now() - started, status: 'ok', reason: 'free_timeout' });
+      return message;
+    } catch (error) {
+      routeLog.push({ model: agentModel, ms: Date.now() - started, status: error.code, reason: 'free_timeout' });
+      throw error;
+    }
   }
   async function executeBeforeDeadline(name, args) {
     if (signal.aborted) throw new AgentError('AGENT_TIMEOUT', 504);
@@ -369,7 +377,7 @@ export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce,
     messages.push({ role: 'system', content: `Dated customs facts for this request (conditional on the returned traveller/origin; ask for missing personal conditions): ${JSON.stringify(facts)}. For a different direction/status call customs_allowance again. Use Arabic digits for limits and include the verified date. Mainland resident status is not Hong Kong/Macao nationality. The CNY 15,000 ceiling includes inbound duty-free shopping; it is not an overseas-only allowance. Macau's MOP 5,000 figure is a declaration threshold with exceptions, not a general duty-free allowance. Tobacco types are alternatives. Macau's alcohol threshold is over 30% ABV. Never estimate tax or advise splitting goods, under-declaration or removing packaging. If verified calculated goods exceed the applicable allowance, explain declaration of the excess (indivisible articles assessed in full), without estimating tax. Always include the border-office final-decision caveat and mainland customs hotline 12360.` });
   }
   for (let round = 0; round < 4 && used < 10; round++) {
-    const message = await completion(false, { paidOnly: routeIntent });
+    const message = await completion();
     const calls = message.tool_calls;
     if (!calls?.length) break;
     const invalidCalls = !Array.isArray(calls) || calls.length > 10 - used || calls.some((call) => !call || typeof call.id !== 'string' || call.id.length > 200 || call.type !== 'function' || !toolDefinitions.some((t) => t.function.name === call.function?.name) || typeof call.function.arguments !== 'string' || call.function.arguments.length > 4000) || new Set(calls.map((call) => call.id)).size !== calls.length;
@@ -402,21 +410,17 @@ export async function runAgent(raw, { key, zhipuKey: injectedZhipuKey, commerce,
   }
   messages.push({ role: 'system', content: finalPrompt });
   if (input.image) messages.push({ role: 'system', content: 'Image-specific final check: do not print any capacity number inferred from the image, including numbers you previously guessed or used in a search. Only the user typed text or actual matching catalogue specifications can establish a capacity. Say the uploaded bottle capacity is unverified; still report useful brand/name and search results. Never mention internal function names in prose.' });
-  // 复杂问答的最终答案走 DeepSeek 一次（免费型号在长上下文里常不遵守 JSON 结构，重试反而白等）；
-  // 未调用任何工具（问候/常识问答）时最终答案仍由免费型号生成。
-  // 最终答案先用免费型号试 5 秒，拿不到合规 JSON 再由付费兜底，兼顾成本与响应速度。
-  // 调用过工具时最终结构化答案直接走付费模型（免费型号在长上下文里几乎不守 JSON，重试只会增加失败率）；无工具对话仍全免费。
-  const final = await completion(true, { paidOnly: used > 0, budget: 5000 });
+  const final = await completion(true);
   let answer;
   try { answer = parseAgentAnswer(final.content, sources, [...knownProducts.values()], customsEvidence); }
   catch (error) {
     if (!(error instanceof AgentError) || error.code !== 'INVALID_AGENT_RESULT') throw error;
     // 仅本地排障时开启：AGENT_DEBUG=1 会把不合格的模型输出打到服务端日志，默认关闭。
     if (process.env.AGENT_DEBUG === '1') console.error('[agent-debug] invalid final:', error.reason, JSON.stringify(final.content || '').slice(0, 1200), JSON.stringify(routeLog));
-    // 校验失败时只重试一次最终输出；工具结果不变，避免额外查询成本。免费型号输出不合格时改用付费兜底重试。
+    // 结构不合格时仍先用免费型号修正一次，不直接付费重试。
     messages.push({ role: 'assistant', content: final.content });
     messages.push({ role: 'system', content: 'Your previous reply was rejected by the server validator. Return ONLY the exact JSON schema: zh/en with answer/considerations/next_steps/question, source_ids and product_ids from this turn only. Keep the zh answer under 380 characters and the en under 760. No URLs, HTML, Markdown links or tables.' });
-    try { answer = parseAgentAnswer((await completion(true, { paidOnly: true })).content, sources, [...knownProducts.values()], customsEvidence); }
+    try { answer = parseAgentAnswer((await completion(true)).content, sources, [...knownProducts.values()], customsEvidence); }
     catch { answer = customsEvidence ? customsFallback(customsEvidence) : fallbackAnswer(knownProducts); }
   }
   if (customsEvidence) {
