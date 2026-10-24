@@ -87,3 +87,5 @@ PUBLIC_ORIGIN=https://gocross-shopping-guide.app.workbuddy.host
 ## 团队预览
 
 [打开 Codespace 团队预览](https://super-duper-robot-jrqrj964x76qh5rxq-5173.app.github.dev/)，运行和同步步骤见 [team-preview.md](docs/team-preview.md)。2026-10-24 已同步最新应用源码并启动云端服务，本机与云端均完整通过 134 项测试；公开首页、前端模块与澳门背景图已核对为本次提交内容。沿用云端原有私有模型配置，本机密钥、登录会话和协作日志未上传。Codespace 停止/休眠时地址不可用。
+
+当前云端已配置智谱、尚未配置 DeepSeek；商品查询曾返回参考卡，但后续浏览器请求也出现分析失败。完整兜底和 Search/Fetch 能力仍待云端私有配置，不能把代码同步或测试通过当成所有真实对话均可用。
