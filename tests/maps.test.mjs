@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { stores, parseOrigin, distanceKm, nearbyStores, routeUrl, mapEmbedUrl } from '../public/maps.mjs';
+import { stores, parseOrigin, distanceKm, nearbyStores, routeUrl, mapEmbedUrl, mapStopsEmbedUrl } from '../public/maps.mjs';
 
 test('经纬度严格校验，允许已收录地点名，不把任意地址猜成坐标', () => {
   assert.deepEqual(parseOrigin('22.19,113.54'), { lat: 22.19, lon: 113.54 });
@@ -28,4 +28,11 @@ test('嵌入地图只使用门店坐标，定位数据不发送给地图 iframe'
   assert.equal(url.hostname, 'www.openstreetmap.org');
   assert.equal(url.searchParams.get('marker'), `${stores[0].lat},${stores[0].lon}`);
   assert.equal(url.searchParams.has('origin'), false);
+});
+test('多站地图范围覆盖真实到店地点，拒绝未知和重复门店', () => {
+  const url = new URL(mapStopsEmbedUrl(['cdf', 'yaohan']));
+  const [west, south, east, north] = url.searchParams.get('bbox').split(',').map(Number);
+  for (const store of stores.filter((s) => ['cdf', 'yaohan'].includes(s.id))) assert.ok(store.lon > west && store.lon < east && store.lat > south && store.lat < north);
+  assert.equal(url.searchParams.get('marker'), `${stores[0].lat},${stores[0].lon}`);
+  for (const ids of [[], ['unknown'], ['cdf', 'cdf'], null]) assert.throws(() => mapStopsEmbedUrl(ids), /INVALID_ROUTE/);
 });

@@ -1,0 +1,85 @@
+{
+  "photos": [
+    {
+      "file": "bg-senado.jpg",
+      "title": "Senado Square, Macau (5235016236)",
+      "author": "Rob Young from United Kingdom",
+      "source": "https://commons.wikimedia.org/wiki/File:Senado_Square,_Macau_(5235016236).jpg",
+      "license": "CC BY 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+      "changes": "Cropped to a landscape composition. Resized to 1400px wide and recompressed as progressive JPEG. Displayed with a teal overlay and responsive crop.",
+      "width": 1400,
+      "height": 1092,
+      "bytes": 265670
+    },
+    {
+      "file": "bg-st-pauls.jpg",
+      "title": "Ruins of Saint Paul's, Macau (23)",
+      "author": "Dinkun Chen",
+      "source": "https://commons.wikimedia.org/wiki/File:Ruins_of_Saint_Paul%27s_(Ru%C3%ADnas_de_S%C3%A3o_Paulo)_,_Macau_(23).jpg",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "changes": "Resized to 1400px wide and recompressed as progressive JPEG. Displayed with a teal overlay and responsive crop.",
+      "width": 1400,
+      "height": 934,
+      "bytes": 305623
+    },
+    {
+      "file": "bg-a-ma.jpg",
+      "title": "A-Ma Temple (Macau) 01",
+      "author": "Abasaa",
+      "source": "https://commons.wikimedia.org/wiki/File:A-Ma_Temple_(Macau)_01.JPG",
+      "license": "Public domain",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-self",
+      "changes": "Resized to 1400px wide and recompressed as progressive JPEG. Displayed with a teal overlay and responsive crop.",
+      "width": 1400,
+      "height": 1050,
+      "bytes": 334760
+    },
+    {
+      "file": "bg-taipa.jpg",
+      "title": "Rua do Cunha (Macau) 01",
+      "author": "Abasaa",
+      "source": "https://commons.wikimedia.org/wiki/File:Rua_do_Cunha_(Macau)_01.JPG",
+      "license": "Public domain",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-self",
+      "changes": "Resized to 1400px wide and recompressed as progressive JPEG. Displayed with a teal overlay and responsive crop.",
+      "width": 1400,
+      "height": 1050,
+      "bytes": 249761
+    },
+    {
+      "file": "bg-tower.jpg",
+      "title": "Macau Tower and Sai Van Bridge during Blue Hour",
+      "author": "Jayden Chao",
+      "source": "https://commons.wikimedia.org/wiki/File:Macau_Tower_and_Sai_Van_Bridge_during_Blue_Hour.jpg",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+      "changes": "Resized to 1400px wide and recompressed as progressive JPEG. Displayed with a teal overlay and responsive crop.",
+      "width": 1400,
+      "height": 788,
+      "bytes": 88612
+    },
+    {
+      "file": "bg-venetian.jpg",
+      "title": "The Venetian Macao 01",
+      "author": "Abasaa",
+      "source": "https://commons.wikimedia.org/wiki/File:The_Venetian_Macao_01.JPG",
+      "license": "Public domain",
+      "licenseUrl": "https://commons.wikimedia.org/wiki/Template:PD-self",
+      "changes": "Resized to 1400px wide and recompressed as progressive JPEG. Displayed with a teal overlay and responsive crop.",
+      "width": 1400,
+      "height": 1050,
+      "bytes": 241792
+    }
+  ],
+  "existingPhotos": {
+    "files": [
+      "macau-hero.jpg",
+      "macau-peninsula.jpg",
+      "macau-cotai.jpg"
+    ],
+    "source": "Existing owner-supplied project assets; retained unchanged.",
+    "license": "Owner-supplied; independent public licence not asserted."
+  }
+}

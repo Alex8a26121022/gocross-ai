@@ -3,19 +3,23 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { readVisionKey, recogniseProduct, visionModel, VisionError } from './vision.mjs';
-import { codespaceVisionOrigin, canUseVision } from './vision-access.mjs';
+import { codespaceVisionOrigin, readPublicOrigins, canUseVision } from './vision-access.mjs';
 import { createRateService } from './rates.mjs';
 import { createCatalogueService, createProductSearch } from './catalogue.mjs';
 import { validateIdentification } from './matching.mjs';
 import { createCommerceService } from './commerce.mjs';
+import { readAgentConfig, runAgent, agentModel, primaryAgentModel, AgentError } from './agent.mjs';
 
 const root = fileURLToPath(new URL('./public/', import.meta.url));
 const port = Number(process.env.PORT || 5173);
 const host = process.env.HOST || '0.0.0.0';
 const visionOrigin = codespaceVisionOrigin(process.env, port);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const publicOrigins = await readPublicOrigins();
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp' };
 let visionBusy = false;
 const visionRequests = [];
+let agentBusy = false;
+const agentRequests = [];
 const rates = createRateService();
 const catalogue = createCatalogueService();
 const productSearch = createProductSearch();
@@ -25,7 +29,7 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 async function visionRoute(req, res) {
-  if (!canUseVision(req, visionOrigin)) { json(res, 403, { error: 'VISION_ORIGIN_DENIED' }); return; }
+  if (!canUseVision(req, visionOrigin, publicOrigins)) { json(res, 403, { error: 'VISION_ORIGIN_DENIED' }); return; }
   if (req.url === '/api/vision/status' && req.method === 'GET') {
     json(res, 200, { configured: Boolean(await readVisionKey()), model: visionModel }); return;
   }
@@ -53,6 +57,40 @@ async function visionRoute(req, res) {
   } finally { visionBusy = false; }
 }
 const server = http.createServer(async (req, res) => {
+  if (req.url?.startsWith('/api/agent/')) {
+    try {
+      if (!canUseVision(req, visionOrigin, publicOrigins)) { json(res, 403, { error: 'AGENT_ORIGIN_DENIED' }); return; }
+      if (req.url === '/api/agent/status' && req.method === 'GET') { const config = await readAgentConfig().catch(() => ({ zhipu: '', deepseek: '' })); json(res, 200, { configured: Boolean(config.zhipu || config.deepseek), model: config.zhipu ? primaryAgentModel : agentModel }); return; }
+      if (req.url !== '/api/agent/message' || req.method !== 'POST') { json(res, 405, { error: 'METHOD_NOT_ALLOWED' }); return; }
+      if (!/^application\/json(?:;|$)/i.test(req.headers['content-type'] || '')) throw new AgentError('INVALID_AGENT_REQUEST', 415);
+      if (Number(req.headers['content-length']) > 12 * 1024 * 1024) throw new AgentError('IMAGE_TOO_LARGE', 413);
+      let size = 0;
+      const chunks = [];
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 12 * 1024 * 1024) throw new AgentError('IMAGE_TOO_LARGE', 413);
+        chunks.push(chunk);
+      }
+      let body;
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new AgentError('INVALID_AGENT_REQUEST'); }
+      if (agentBusy) throw new AgentError('AGENT_BUSY', 429);
+      const now = Date.now();
+      while (agentRequests.length && now - agentRequests[0] > 60000) agentRequests.shift();
+      if (agentRequests.length >= 10) throw new AgentError('AGENT_RATE_LIMIT', 429);
+      const controller = new AbortController();
+      res.on('close', () => { if (!res.writableEnded) controller.abort(); });
+      agentBusy = true;
+      try {
+        agentRequests.push(now);
+        const config = await readAgentConfig();
+        const result = await runAgent(body, { key: config.deepseek, zhipuKey: config.zhipu, commerce, rates, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(150000)]) });
+        if (!res.destroyed) json(res, 200, result);
+      } finally { agentBusy = false; }
+    } catch (error) {
+      if (!res.destroyed) json(res, error instanceof AgentError || error instanceof VisionError ? error.status : 500, { error: error instanceof AgentError || error instanceof VisionError ? error.code : 'INTERNAL_ERROR' });
+    }
+    return;
+  }
   if (req.url?.startsWith('/api/products/')) {
     if (req.method !== 'GET') { json(res, 405, { error: 'METHOD_NOT_ALLOWED' }); return; }
     try {
@@ -105,6 +143,8 @@ const server = http.createServer(async (req, res) => {
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff',
       'Content-Security-Policy': "default-src 'self'; frame-src https://www.openstreetmap.org; img-src 'self' https://pic.cdfmembers.com blob: data:; style-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
+      'Referrer-Policy': 'no-referrer',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
     });
     res.end(req.method === 'HEAD' ? undefined : content);
   } catch (error) {

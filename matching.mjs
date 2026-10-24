@@ -52,7 +52,7 @@ export async function matchProducts(item, service) {
   if (!successful.length) throw new Error('OFFICIAL_SEARCH_UNAVAILABLE');
   const candidates = [...new Map(successful.flatMap((result) => result.products).map((product) => [product.id, product])).values()];
   const ranked = rankProducts(item, candidates);
-  const selected = ranked.filter((product) => product.matchScore >= (ranked[0]?.matchScore || 0) - 2).slice(0, 3);
+  const selected = ranked.filter((product) => product.matchScore >= (ranked[0]?.matchScore || 0) - 2).slice(0, 6);
   const detailed = await Promise.all(selected.map(async (product) => {
     try { return { ...product, ...await service.detail(product.id) }; } catch { return product; }
   }));
@@ -65,5 +65,7 @@ export async function searchProductsText(query, service, page = 1) {
   query = canonicalQuery(query);
   const result = await service.search(query, page);
   const products = rankProducts({ product_name: query, search_keywords: [query] }, result.products);
+  // 模糊搜索兜底：精确/品类词都没排上时，仍返回官网候选供顾客浏览，而不是空结果。
+  if (!products.length && result.products?.length) return { ...result, products: result.products.slice(0, 8).map((product) => ({ ...product, matchScore: 0, matchKind: 'category' })), related: true };
   return { ...result, products, related: false };
 }

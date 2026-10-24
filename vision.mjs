@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readEnvValue } from './env.mjs';
 
 export const visionModel = 'glm-4.6v-flash';
 const endpoint = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
@@ -9,15 +9,8 @@ export class VisionError extends Error {
 }
 
 export async function readVisionKey() {
-  if (process.env.ZHIPU_API_KEY?.trim()) return process.env.ZHIPU_API_KEY.trim();
-  try {
-    const content = await readFile(new URL('./.env', import.meta.url), 'utf8');
-    const match = content.match(/^\s*ZHIPU_API_KEY\s*=\s*(?:"([^"\r\n]*)"|'([^'\r\n]*)'|([^\r\n#]*))/m);
-    return (match?.[1] ?? match?.[2] ?? match?.[3] ?? '').trim();
-  } catch (error) {
-    if (error.code === 'ENOENT') return '';
-    throw new VisionError('CONFIG_ERROR', 503);
-  }
+  try { return await readEnvValue('ZHIPU_API_KEY'); }
+  catch { throw new VisionError('CONFIG_ERROR', 503); }
 }
 
 export function validateImage(image) {

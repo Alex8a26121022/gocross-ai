@@ -5,7 +5,8 @@ import { once } from 'node:events';
 import http from 'node:http';
 
 test('静态服务与本机视觉接口边界', async (t) => {
-  const child = spawn(process.execPath, ['server.mjs'], { cwd: new URL('../', import.meta.url), env: { ...process.env, HOST: '127.0.0.1', PORT: '0', DISABLE_MARKET_FETCH: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  // This baseline deliberately has no valid public origin, regardless of local .env.
+  const child = spawn(process.execPath, ['server.mjs'], { cwd: new URL('../', import.meta.url), env: { ...process.env, DEEPSEEK_API_KEY: 'test-agent-not-a-real-key', ZHIPU_API_KEY: '', PUBLIC_ORIGIN: 'disabled', HOST: '127.0.0.1', PORT: '0', DISABLE_MARKET_FETCH: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   t.after(async () => { if (child.exitCode === null) { child.kill(); await once(child, 'exit'); } });
   const port = await new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('Server did not start')), 10000);
@@ -35,6 +36,16 @@ test('静态服务与本机视觉接口边界', async (t) => {
   await t.test('不支持的请求方法和内容类型被拒绝', async () => {
     assert.equal((await fetch(url + '/api/vision/recognise')).status, 405);
     assert.equal((await fetch(url + '/api/vision/recognise', { method: 'POST', body: 'x' })).status, 415);
+  });
+  await t.test('Agent 状态不泄露密钥，且检查来源、方法、请求体与图片', async () => {
+    const body = await (await fetch(url + '/api/agent/status')).json();
+    assert.deepEqual(Object.keys(body).sort(), ['configured', 'model']); assert.match(body.model, /^(deepseek|glm)-[a-z0-9.-]+$/);
+    assert.equal((await fetch(url + '/api/agent/status', { headers: { Origin: 'https://evil.example' } })).status, 403);
+    assert.equal((await fetch(url + '/api/agent/message')).status, 405);
+    assert.equal((await fetch(url + '/api/agent/message', { method: 'POST', body: 'x' })).status, 415);
+    for (const body of ['null', '{}', '{', '{"message":"x","language":"fr"}', '{"message":"x","language":"zh","image":"https://example.com/x.png"}']) {
+      assert.equal((await fetch(url + '/api/agent/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).status, 400);
+    }
   });
   await t.test('商品检索参数在访问官网前校验，详情不接受任意 URL', async () => {
     for (const route of ['/api/products/search?q=', '/api/products/search?q=x&page=-1', '/api/products/detail?id=https://private.example/', '/api/products/compare?id=https://private.example/', '/api/products/match?item=null', '/api/products/match?item=%7B']) assert.equal((await fetch(url + route)).status, 400);

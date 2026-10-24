@@ -2,35 +2,145 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0f766e">
-  <meta name="description" content="搜索商品、比较当前公开报价，规划附近购物路线。">
-  <title>过关 GoCross · 商品比价</title>
-  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"><script type="module" src="/app.mjs"></script>
+  <meta name="description" content="过关 GoCross：用文字或图片说出珠澳购物需求，自动查询商品与价格，并规划多站采购路线。">
+  <title>过关 GoCross · 珠澳消费助手</title>
+  <link rel="icon" href="/assets/mark.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css?v=20261020a"><script type="module" src="/app.mjs?v=20261020a"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">跳至主要内容</a>
-  <header class="topbar"><a class="brand" href="/"><img src="/assets/mark.svg" width="32" height="32" alt=""><span>过关 <b>GoCross</b></span></a><nav aria-label="主导航"><button id="home" class="text-button" data-zh="返回首页" data-en="Home">返回首页</button><button id="open-stores" class="text-button" data-zh="门店与路线" data-en="Stores & directions">门店与路线</button><button id="language" class="text-button" aria-label="Switch to English">EN</button></nav></header>
-  <main id="main">
-    <div class="page-heading"><h1 data-zh="商品比价" data-en="Compare prices">商品比价</h1><button id="refresh" class="text-button" data-zh="刷新报价" data-en="Refresh prices">刷新报价</button></div>
-    <div class="workspace-grid"><div class="workspace-content">
-      <form id="query-form" class="composer panel"><label for="query" data-zh="搜索商品" data-en="Search products">搜索商品</label><div class="search-row"><input id="query" type="search" maxlength="120" placeholder="商品、品牌或型号，例如 SK II" data-placeholder-zh="商品、品牌或型号，例如 SK II" data-placeholder-en="Product, brand or model, e.g. SK II"><button id="search-button" type="submit" class="primary-button" data-zh="搜索比价" data-en="Search">搜索比价</button></div><div class="upload-row"><label class="upload-button" for="file-input"><span data-icon="image"></span><span data-zh="上传图片找同款" data-en="Find by image">上传图片找同款</span></label><input id="file-input" type="file" accept="image/jpeg,image/png,image/webp"><small data-zh="图片会自动发送至智谱识别" data-en="Images are identified by Zhipu">图片会自动发送至智谱识别</small></div><div id="image-area" class="image-area" hidden><img id="image-preview" alt="上传商品"><div><p id="vision-status" role="status"></p><label for="image-query" data-zh="识别商品" data-en="Identified product">识别商品</label><input id="image-query" type="text" maxlength="120"></div><button id="remove-image" type="button" class="text-button" data-zh="移除" data-en="Remove">移除</button></div><p id="query-error" class="form-error" role="alert" hidden></p></form>
-      <p id="search-status" role="status" class="search-status"></p><p class="price-cadence" data-zh="国内平台每日采集 · 中免查询时更新" data-en="Domestic prices collected daily · CDF updated on search">国内平台每日采集 · 中免查询时更新</p><div id="online-fallback" class="online-fallback panel" role="status" hidden></div><div id="results" class="product-grid" aria-busy="false"></div><div id="pagination" class="pagination"></div>
-    </div>
-          <aside id="store-panel" class="store-locator panel" aria-labelledby="stores-heading">
-            <div class="conditions-heading"><h2 id="stores-heading" data-zh="门店与路线" data-en="Stores & directions">门店与路线</h2><span data-icon="pin"></span></div>
-            <p class="muted" data-zh="找到附近购物地点，再规划怎么去。" data-en="Find nearby shopping locations and plan your journey.">找到附近购物地点，再规划怎么去。</p>
-            <button id="locate-me" type="button" class="secondary-button"><span data-icon="pin"></span><span data-zh="使用我的位置" data-en="Use my location">使用我的位置</span></button>
-            <form id="location-form"><label for="origin" data-zh="出发地点" data-en="Starting point">出发地点</label><div class="location-input"><input id="origin" type="text" maxlength="180" list="known-origins" placeholder="地名，或纬度,经度" data-placeholder-zh="地名，或纬度,经度" data-placeholder-en="Place name, or latitude,longitude"><button class="secondary-button" type="submit" data-zh="设置" data-en="Set">设置</button></div><datalist id="known-origins"><option value="新八佰伴百货公司"><option value="四季名店"><option value="cdf 澳门上葡京店"></datalist></form>
-            <p id="location-status" role="status" class="location-status"></p>
-            <label for="route-mode" data-zh="出行方式" data-en="Travel mode">出行方式</label><select id="route-mode"><option value="walking" data-zh="步行" data-en="Walking">步行</option><option value="transit" data-zh="公交 / 公共交通" data-en="Public transport">公交 / 公共交通</option><option value="driving" data-zh="驾车" data-en="Driving">驾车</option></select>
-            <iframe id="store-map" title="门店位置地图" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
-            <p class="map-credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors · ODbL</a></p>
-            <div id="nearby-stores"></div>
-            <p class="map-note" data-zh="仅在已收录的 3 个购物地点中比较直线距离；路程和时间在地图中查看，门店库存未接入。" data-en="Straight-line distances among 3 listed locations. View travel distance and time in Maps. Store inventory is not connected.">仅在已收录的 3 个购物地点中比较直线距离；路程和时间在地图中查看，门店库存未接入。</p>
-            <p class="map-note" data-zh="定位仅用于本页排序；点击路线后，出发地会传给 Google Maps。" data-en="Location is used locally for sorting. Opening directions sends your origin to Google Maps.">定位仅用于本页排序；点击路线后，出发地会传给 Google Maps。</p>
-          </aside>
-    </div>
-  </main>
-  <dialog id="comparison-dialog"><div class="dialog-heading"><h2 id="comparison-title"></h2><button id="close-comparison" class="text-button" data-zh="关闭" data-en="Close">关闭</button></div><div id="comparison-content"></div></dialog>
-  <div id="toast" class="toast" role="status" hidden></div>
+  <a class="skip-link" href="#main" data-zh="跳至主要内容" data-en="Skip to content">跳至主要内容</a>
+  <div class="bg-stage" aria-hidden="true">
+    <div class="bg-channel bg-channel--a"><div class="bg-track">
+      <div class="bg-sequence">
+        <figure class="bg-frame--st-pauls"><img src="/assets/macau/bg-st-pauls.jpg" width="1400" height="934" alt="" loading="eager" decoding="async" fetchpriority="high"><figcaption data-zh="大三巴" data-en="St. Paul’s">大三巴</figcaption></figure>
+        <figure class="bg-frame--a-ma"><img src="/assets/macau/bg-a-ma.jpg" width="1400" height="1050" alt="" loading="lazy" decoding="async"><figcaption data-zh="妈阁庙" data-en="A-Ma Temple">妈阁庙</figcaption></figure>
+        <figure class="bg-frame--macau-hero"><img src="/assets/macau/macau-hero.jpg" alt="" loading="lazy" decoding="async"><figcaption data-zh="澳门天际线" data-en="Macau skyline">澳门天际线</figcaption></figure>
+      </div>
+      <div class="bg-sequence">
+        <figure class="bg-frame--st-pauls"><img src="/assets/macau/bg-st-pauls.jpg" width="1400" height="934" alt="" loading="lazy" decoding="async"><figcaption data-zh="大三巴" data-en="St. Paul’s">大三巴</figcaption></figure>
+        <figure class="bg-frame--a-ma"><img src="/assets/macau/bg-a-ma.jpg" width="1400" height="1050" alt="" loading="lazy" decoding="async"><figcaption data-zh="妈阁庙" data-en="A-Ma Temple">妈阁庙</figcaption></figure>
+        <figure class="bg-frame--macau-hero"><img src="/assets/macau/macau-hero.jpg" alt="" loading="lazy" decoding="async"><figcaption data-zh="澳门天际线" data-en="Macau skyline">澳门天际线</figcaption></figure>
+      </div>
+    </div></div>
+    <div class="bg-channel bg-channel--b"><div class="bg-track">
+      <div class="bg-sequence">
+        <figure class="bg-frame--senado"><img src="/assets/macau/bg-senado.jpg" width="1400" height="1092" alt="" loading="eager" decoding="async"><figcaption data-zh="议事亭前地" data-en="Senado Square">议事亭前地</figcaption></figure>
+        <figure class="bg-frame--taipa"><img src="/assets/macau/bg-taipa.jpg" width="1400" height="1050" alt="" loading="lazy" decoding="async"><figcaption data-zh="官也街" data-en="Rua do Cunha">官也街</figcaption></figure>
+        <figure class="bg-frame--macau-cotai"><img src="/assets/macau/macau-cotai.jpg" alt="" loading="lazy" decoding="async"><figcaption data-zh="路氹城" data-en="Cotai">路氹城</figcaption></figure>
+      </div>
+      <div class="bg-sequence">
+        <figure class="bg-frame--senado"><img src="/assets/macau/bg-senado.jpg" width="1400" height="1092" alt="" loading="lazy" decoding="async"><figcaption data-zh="议事亭前地" data-en="Senado Square">议事亭前地</figcaption></figure>
+        <figure class="bg-frame--taipa"><img src="/assets/macau/bg-taipa.jpg" width="1400" height="1050" alt="" loading="lazy" decoding="async"><figcaption data-zh="官也街" data-en="Rua do Cunha">官也街</figcaption></figure>
+        <figure class="bg-frame--macau-cotai"><img src="/assets/macau/macau-cotai.jpg" alt="" loading="lazy" decoding="async"><figcaption data-zh="路氹城" data-en="Cotai">路氹城</figcaption></figure>
+      </div>
+    </div></div>
+    <div class="bg-channel bg-channel--c"><div class="bg-track">
+      <div class="bg-sequence">
+        <figure class="bg-frame--tower"><img src="/assets/macau/bg-tower.jpg" width="1400" height="788" alt="" loading="eager" decoding="async"><figcaption data-zh="澳门旅游塔" data-en="Macau Tower">澳门旅游塔</figcaption></figure>
+        <figure class="bg-frame--venetian"><img src="/assets/macau/bg-venetian.jpg" width="1400" height="1050" alt="" loading="lazy" decoding="async"><figcaption data-zh="威尼斯人" data-en="The Venetian Macao">威尼斯人</figcaption></figure>
+        <figure class="bg-frame--macau-peninsula"><img src="/assets/macau/macau-peninsula.jpg" alt="" loading="lazy" decoding="async"><figcaption data-zh="澳门半岛" data-en="Macau Peninsula">澳门半岛</figcaption></figure>
+      </div>
+      <div class="bg-sequence">
+        <figure class="bg-frame--tower"><img src="/assets/macau/bg-tower.jpg" width="1400" height="788" alt="" loading="lazy" decoding="async"><figcaption data-zh="澳门旅游塔" data-en="Macau Tower">澳门旅游塔</figcaption></figure>
+        <figure class="bg-frame--venetian"><img src="/assets/macau/bg-venetian.jpg" width="1400" height="1050" alt="" loading="lazy" decoding="async"><figcaption data-zh="威尼斯人" data-en="The Venetian Macao">威尼斯人</figcaption></figure>
+        <figure class="bg-frame--macau-peninsula"><img src="/assets/macau/macau-peninsula.jpg" alt="" loading="lazy" decoding="async"><figcaption data-zh="澳门半岛" data-en="Macau Peninsula">澳门半岛</figcaption></figure>
+      </div>
+    </div></div>
+  </div>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/"><img src="/assets/mark.svg" width="38" height="38" alt=""><span><strong>过关</strong><small>GoCross</small></span></a>
+      <p class="region" data-zh="珠海往返澳门的购物助手" data-en="Your Zhuhai–Macau shopping companion">珠海往返澳门的购物助手</p>
+      <nav class="top-actions" aria-label="GoCross"><button id="plans-toggle" class="new-chat plans-button" aria-haspopup="dialog" aria-controls="plans-dialog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 4h12v16l-6-4.5L6 20z"/></svg><span class="plans-label" data-zh="我的购物方案" data-en="My plans">我的购物方案</span><span id="plans-count" class="plans-count">0</span></button><button id="history-toggle" class="new-chat history-button" aria-label="历史记录" aria-haspopup="dialog" aria-controls="history-dialog"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></svg><span class="history-label" data-zh="历史记录" data-en="History">历史记录</span></button><button id="home" class="new-chat" data-zh="新对话" data-en="New chat">新对话</button><button id="language" class="text-button" aria-label="Switch to English">EN</button></nav>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="macau-header" aria-labelledby="trip-heading">
+        <div class="scene-intro"><h1 id="trip-heading" data-zh="去澳门，&#10;买得明白。" data-en="Shop Macau.&#10;Know where to go.">去澳门，&#10;买得明白。</h1>
+        <p class="scene-copy" data-zh="告诉我想买什么，剩下的一起盘算。" data-en="Bring your shopping list. We’ll work out the rest.">告诉我想买什么，剩下的一起盘算。</p></div>
+        <div class="scene-bottom">
+          <div class="location-photos"><figure><img src="/assets/macau/macau-peninsula.jpg" width="450" height="408" alt="澳门半岛" loading="lazy"><figcaption data-zh="澳门半岛" data-en="Macau Peninsula">澳门半岛</figcaption></figure><figure><img src="/assets/macau/macau-cotai.jpg" width="450" height="408" alt="路氹城" loading="lazy"><figcaption data-zh="路氹城" data-en="Cotai">路氹城</figcaption></figure></div>
+          <p class="scene-credit" data-zh="CIA 小组出品" data-en="Made by Team CIA">CIA 小组出品</p>
+          <div class="scene-tools">
+            <button id="background-motion" class="scene-motion" type="button" aria-pressed="false">
+              <svg class="motion-pause" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M2 2h2v8H2zm6 0h2v8H8z"/></svg>
+              <svg class="motion-resume" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="m3 1 8 5-8 5z"/></svg>
+              <span class="motion-pause" data-zh="暂停画面" data-en="Pause motion">暂停画面</span><span class="motion-resume" data-zh="继续播放" data-en="Resume motion">继续播放</span>
+            </button>
+            <details class="scene-sources"><summary data-zh="影像来源" data-en="Photo credits">影像来源</summary>
+              <ul>
+                <li><a href="https://commons.wikimedia.org/wiki/File:Senado_Square,_Macau_(5235016236).jpg" target="_blank" rel="noreferrer">Senado Square</a> — Rob Young from United Kingdom; <a href="https://creativecommons.org/licenses/by/2.0" target="_blank" rel="noreferrer">CC BY 2.0</a></li>
+                <li><a href="https://commons.wikimedia.org/wiki/File:Ruins_of_Saint_Paul%27s_(Ru%C3%ADnas_de_S%C3%A3o_Paulo)_,_Macau_(23).jpg" target="_blank" rel="noreferrer">St. Paul’s</a> — Dinkun Chen; <a href="https://creativecommons.org/licenses/by-sa/4.0" target="_blank" rel="noreferrer">CC BY-SA 4.0</a></li>
+                <li><a href="https://commons.wikimedia.org/wiki/File:A-Ma_Temple_(Macau)_01.JPG" target="_blank" rel="noreferrer">A-Ma Temple</a> — Abasaa; <a href="https://commons.wikimedia.org/wiki/Template:PD-self" target="_blank" rel="noreferrer">Public domain</a></li>
+                <li><a href="https://commons.wikimedia.org/wiki/File:Rua_do_Cunha_(Macau)_01.JPG" target="_blank" rel="noreferrer">Rua do Cunha</a> — Abasaa; <a href="https://commons.wikimedia.org/wiki/Template:PD-self" target="_blank" rel="noreferrer">Public domain</a></li>
+                <li><a href="https://commons.wikimedia.org/wiki/File:Macau_Tower_and_Sai_Van_Bridge_during_Blue_Hour.jpg" target="_blank" rel="noreferrer">Macau Tower</a> — Jayden Chao; <a href="https://creativecommons.org/licenses/by-sa/4.0" target="_blank" rel="noreferrer">CC BY-SA 4.0</a></li>
+                <li><a href="https://commons.wikimedia.org/wiki/File:The_Venetian_Macao_01.JPG" target="_blank" rel="noreferrer">The Venetian Macao</a> — Abasaa; <a href="https://commons.wikimedia.org/wiki/Template:PD-self" target="_blank" rel="noreferrer">Public domain</a></li>
+              </ul>
+              <small data-zh="经裁切、压缩及色调调整；同许可图片仍按原许可提供。原有图片由项目方提供。" data-en="Cropped, compressed and colour-treated. Share-alike photos retain their licences. Original photos supplied by the project owner.">经裁切、压缩及色调调整；同许可图片仍按原许可提供。原有图片由项目方提供。</small>
+            </details>
+          </div>
+        </div>
+      </section>
+      <div class="trip-desk">
+      <section class="chat-workspace" aria-label="GoCross">
+      <div class="desk-heading"><img src="/assets/mark.svg" width="26" height="26" alt=""><h2 data-zh="购物助手" data-en="Shopping assistant">购物助手</h2></div>
+      <p id="saved-chat-note" class="saved-chat-note" hidden data-zh="已恢复历史对话；较早的报价需重新核实。" data-en="Earlier messages use saved prices. Check them again before buying.">已恢复历史对话；较早的报价需重新核实。</p>
+      <section id="welcome" class="welcome">
+        <p data-zh="告诉我商品、预算和出发地。我会先查价格，再安排路线。" data-en="Add your items, budget and starting point. I’ll check prices and plan your stops.">告诉我商品、预算和出发地。我会先查价格，再安排路线。</p>
+      </section>
+      <div id="conversation" class="conversation" role="log" aria-label="与消费助手的对话" aria-live="polite" aria-relevant="additions"></div>
+      <p id="working" class="working" role="status" hidden></p>
+      <div class="composer-area">
+        <form id="query-form" class="composer">
+          <label for="query" class="sr-only" data-zh="购物需求或追问" data-en="Shopping request or follow-up">购物需求或追问</label>
+          <textarea id="query" rows="3" maxlength="1800" placeholder="想买什么？也可以一起告诉我预算、出发地点和时间。" data-placeholder-zh="想买什么？也可以一起告诉我预算、出发地点和时间。" data-placeholder-en="What would you like to buy? Add your budget, starting point and schedule."></textarea>
+          <div id="image-area" class="image-area" hidden><img id="image-preview" alt="待分析商品"><div><b id="image-name"></b><small data-zh="可继续补充预算、出发地点或想看的规格" data-en="Add a budget, starting point or size if you like">可继续补充预算、出发地点或想看的规格</small></div><button id="remove-image" class="text-button" type="button" data-zh="移除" data-en="Remove">移除</button></div>
+          <div class="composer-bottom"><div class="upload-control"><label class="upload-button" for="file-input"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg><span data-zh="上传图片" data-en="Add image">上传图片</span></label><input id="file-input" type="file" accept="image/jpeg,image/png,image/webp"><small class="file-hint" data-zh="或拖入图片" data-en="or drop an image">或拖入图片</small></div><div class="send-controls"><button id="stop" type="button" class="text-button" hidden data-zh="停止" data-en="Stop">停止</button><button id="send" type="submit" class="primary-button" data-zh="发送" data-en="Send">发送</button></div></div>
+        </form>
+        <div class="request-feedback"><p id="query-error" class="form-error" role="alert" hidden></p><button id="retry" type="button" class="text-button" hidden data-zh="重试" data-en="Retry">重试</button></div>
+        <p id="request-status" class="request-status" role="status" hidden></p>
+        <p id="history-notice" class="form-error" role="status" hidden></p>
+      </div>
+      </section>
+      <aside id="store-panel" class="map-panel" aria-labelledby="map-heading">
+        <div class="map-heading-row"><h2 id="map-heading" data-zh="门店与路线" data-en="Map & stops">门店与路线</h2>
+        <div class="store-select"><label class="sr-only" for="map-store" data-zh="查看门店" data-en="View a store">查看门店</label><select id="map-store"></select></div></div>
+        <p id="map-context" class="map-context" role="status" data-zh="在对话中告诉我清单和出发地。" data-en="Tell me your list and starting point in chat.">在对话中告诉我清单和出发地。</p>
+        <a id="map-full-route" class="route-full" target="_blank" rel="noreferrer" hidden data-zh="全程导航" data-en="Navigate full route">全程导航</a>
+        <iframe id="store-map" title="门店地图" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+        <p class="map-credit">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors · ODbL</a></p>
+        <ol id="map-stops" class="map-stops" hidden></ol>
+        <p id="map-address" class="map-address"></p>
+        <div class="map-links"><a id="map-directions" target="_blank" rel="noreferrer" data-zh="打开导航 ↗" data-en="Open directions ↗">打开导航 ↗</a><a id="map-source" target="_blank" rel="noreferrer" data-zh="地点来源" data-en="Location source">地点来源</a></div>
+        <p class="map-note" data-zh="分段距离为直线距离，实际路程以导航为准。" data-en="Leg distances are straight-line distances. Follow navigation for the actual journey.">分段距离为直线距离，实际路程以导航为准。</p>
+      </aside>
+      </div>
+    </main>
+  </div>
+  <dialog id="history-dialog" class="history-dialog" aria-labelledby="history-heading">
+    <div class="history-heading"><h2 id="history-heading" data-zh="历史记录" data-en="History">历史记录</h2><button id="history-close" class="text-button" aria-label="关闭历史记录">×</button></div>
+    <p class="history-local-note" data-zh="自动保存在此浏览器，其他设备上不可见。" data-en="Saved automatically on this browser. Available on this device only.">自动保存在此浏览器，其他设备上不可见。</p>
+    <label class="sr-only" for="history-search" data-zh="搜索对话" data-en="Search conversations">搜索对话</label>
+    <input id="history-search" type="search" maxlength="200" autocomplete="off" placeholder="搜索对话" data-placeholder-zh="搜索对话" data-placeholder-en="Search conversations">
+    <div class="history-selection"><label><input id="history-select-all" type="checkbox"><span data-zh="选择当前结果" data-en="Select visible results">选择当前结果</span></label><button id="history-delete" type="button" class="delete-selected" disabled data-zh="删除所选" data-en="Delete selected">删除所选</button></div>
+    <p id="history-selected" class="history-selection-note" aria-live="polite"></p>
+    <p class="history-selection-note" data-zh="仅删除勾选的对话，同时移除关联的已保存方案。" data-en="Deletes only checked conversations and their linked saved plans.">仅删除勾选的对话，同时移除关联的已保存方案。</p>
+    <p id="history-status" class="history-status" role="status"></p>
+    <div id="history-list" class="history-list"></div>
+  </dialog>
+  <dialog id="plans-dialog" class="history-dialog plans-dialog" aria-labelledby="plans-heading">
+    <div class="history-heading"><h2 id="plans-heading" data-zh="我的购物方案" data-en="My shopping plans">我的购物方案</h2><button id="plans-close" class="text-button" aria-label="关闭购物方案">×</button></div>
+    <p class="history-local-note" data-zh="保存当前对话的查询结果与路线，随时打开或导出给同行的人。" data-en="Save the current results and route, then reopen or export it for your travel companions.">保存当前对话的查询结果与路线，随时打开或导出给同行的人。</p>
+    <section class="plan-picker">
+      <h3 data-zh="本次可买清单" data-en="Items from this chat">本次可买清单</h3>
+      <div class="plan-filter"><label class="sr-only" for="plan-region" data-zh="区域筛选" data-en="Filter by area">区域筛选</label><select id="plan-region"><option value="" data-zh="全部区域" data-en="All areas">全部区域</option><option value="澳门半岛" data-zh="澳门半岛" data-en="Macau Peninsula">澳门半岛</option><option value="氹仔" data-zh="氹仔" data-en="Taipa">氹仔</option><option value="路氹" data-zh="路氹" data-en="Cotai">路氹</option><option value="路环" data-zh="路环" data-en="Coloane">路环</option></select></div>
+      <div class="plan-table-wrap"><table class="plan-table"><thead><tr><th class="plan-check"><span class="sr-only" data-zh="选择" data-en="Select">选择</span></th><th data-zh="商品 / 规格" data-en="Item / size">商品 / 规格</th><th data-zh="单价" data-en="Unit price">单价</th><th data-zh="数量" data-en="Quantity">数量</th><th><span class="sr-only" data-zh="移除" data-en="Remove">移除</span></th></tr></thead><tbody id="plan-rows"></tbody></table></div>
+      <p id="plan-table-empty" class="history-status"></p>
+      <p id="plan-total" class="plan-total" aria-live="polite"></p>
+      <div class="plans-foot"><label class="plan-origin-label" for="plan-origin" data-zh="出发地（可选）" data-en="Starting point (optional)">出发地（可选）</label><input id="plan-origin" class="plan-origin" type="text" maxlength="80" placeholder="如：威尼斯人、关闸" data-placeholder-zh="如：威尼斯人、关闸" data-placeholder-en="e.g. Venetian, Portas do Cerco"><span id="plan-selected" class="plan-selected"></span><button id="plan-route" class="primary-button" data-zh="生成路线" data-en="Plan route">生成路线</button></div>
+      <section id="plan-route-result" class="plan-route" aria-live="polite" hidden></section>
+    </section>
+    <p id="plans-status" class="history-status" role="status"></p>
+    <div id="plans-list" class="history-list"></div>
+    <div class="plans-foot"><button id="plans-save" class="primary-button" data-zh="保存当前方案" data-en="Save current plan">保存当前方案</button></div>
+  </dialog>
 </body>
 </html>
